@@ -42,4 +42,4 @@ export function startLearner() {
   setInterval(updateLearner, 3600000)
   updateLearner()
   console.log('[LEARNER] Pattern learner started')
-}
+        }
