@@ -1,12 +1,20 @@
 export const EXEC_KEY  = process.env.EXECUTOR_PRIVATE_KEY || null
 export const OWNER_KEY = process.env.OWNER_PRIVATE_KEY    || null
 
+// Built at call time — never baked at import time
+// This ensures Railway env vars are always read fresh
+export function getPimlicoUrl(chainId) {
+  const key = process.env.PIMLICO_API_KEY
+  if (!key || key.length < 10) return null
+  return `https://api.pimlico.io/v2/${chainId}/rpc?apikey=${key}`
+}
+
 export const CHAINS = {
   polygon: {
     id: 137, gasMethod: 'pimlico',
     rpcHttp: `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_POL_KEY||'demo'}`,
     rpcWss:  `wss://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_POL_KEY||'demo'}`,
-    pimlico: `https://api.pimlico.io/v2/137/rpc?apikey=${process.env.PIMLICO_API_KEY||''}`,
+    get pimlico() { return getPimlicoUrl(137) },
     aavePool:     '0x794a61358D6845594F94dc1DB02A252b5b4814aD',
     aaveData:     '0x9441B65EE553F70df9C77d45d3283B6BC24F222d',
     router:       '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
@@ -23,7 +31,7 @@ export const CHAINS = {
     id: 42161, gasMethod: 'pimlico',
     rpcHttp: `https://arb-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_ARB_KEY||'demo'}`,
     rpcWss:  `wss://arb-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_ARB_KEY||'demo'}`,
-    pimlico: `https://api.pimlico.io/v2/42161/rpc?apikey=${process.env.PIMLICO_API_KEY||''}`,
+    get pimlico() { return getPimlicoUrl(42161) },
     aavePool:     '0x794a61358D6845594F94dc1DB02A252b5b4814aD',
     aaveData:     '0x69FA688f1Dc47d4B5d8029D5a35FB7a548310654',
     router:       '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
@@ -41,6 +49,7 @@ export const CHAINS = {
     rpcHttp: `https://eth-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_ETH_KEY||'demo'}`,
     rpcWss:  `wss://eth-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_ETH_KEY||'demo'}`,
     flashbotsRelay: 'https://relay.flashbots.net',
+    pimlico: null,
     aavePool:     '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2',
     aaveData:     '0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3',
     morpho:       '0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb',
@@ -58,7 +67,7 @@ export const CHAINS = {
     id: 43114, gasMethod: 'pimlico',
     rpcHttp: `https://avax-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_AVAX_KEY||'demo'}`,
     rpcWss:  `wss://avax-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_AVAX_KEY||'demo'}`,
-    pimlico: `https://api.pimlico.io/v2/43114/rpc?apikey=${process.env.PIMLICO_API_KEY||''}`,
+    get pimlico() { return getPimlicoUrl(43114) },
     aavePool:     '0x794a61358D6845594F94dc1DB02A252b5b4814aD',
     aaveData:     '0x69FA688f1Dc47d4B5d8029D5a35FB7a548310654',
     router:       '0xbb00FF08d01D300023C629E8fFfFcb65A5a578cE',
@@ -79,4 +88,4 @@ export const ACTIVE_CHAINS = Object.entries(CHAINS)
 export const TOPICS = {
   BORROW:      '0xb3d084820fb1a9decffb176436bd02558d15fac9b0ddfed8c465bc7359d7dce0',
   LIQUIDATION: '0xe413a321e8681d831f4dbccbca790d2952b56f977908e45be37335533e005286'
-}
+    }
