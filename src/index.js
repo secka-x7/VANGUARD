@@ -13,6 +13,11 @@ async function boot() {
   // DB
   try { const {initDB}=await import('./db.js'); await initDB() }
   catch(e){ console.error('DB fatal:',e.message); process.exit(1) }
+  // Load any manually set contract addresses from Railway env vars
+  try {
+    const { loadManualContracts } = await import('./deployer.js')
+    loadManualContracts()
+  } catch {}
 
   // Env check
   const need=['EXECUTOR_PRIVATE_KEY','PIMLICO_API_KEY','MODEM_PAY_SECRET_KEY','MODEM_PAY_WAVE_NUMBER']
