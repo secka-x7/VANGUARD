@@ -1,12 +1,8 @@
 // X7-SV · bootstrap.js — ARCHITECTURE 1: Zero-Seed · Zero-Gas · Expanded
 //
-// EXPANDED FOR DAY 1 REVENUE:
-//   - Multi-provider parallel RPC (never exhausted)
-//   - Bundle deduplication (one active bundle per block, not per swap)
-//   - Concurrent bundle submission across all 6 builders simultaneously
-//   - Cooldown gate: 13s between ETH bundle attempts (one block)
-//   - Direct provider fallback: public ETH nodes that handle signing calls
-//   - Fee estimation from multiple sources with median selection
+// FIX: getGasParams() — EIP-1559 invariant: maxFeePerGas >= maxPriorityFeePerGas
+//   OLD (broken): tip from 80th percentile > maxFee when base fee is low
+//   NEW (fixed):  tip = fixed gwei per attempt, maxFee = baseFee*2 + tip (always valid)
 
 import { keccak256, encodePacked, encodeAbiParameters, parseAbiParameters } from 'viem'
 import { getChains, getActiveChains, getChain } from './chains.js'
@@ -18,36 +14,23 @@ import { emit } from './events.js'
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 const CREATE2_FACTORY = '0x4e59b44847b379578588920cA78FbF26c0B4956C'
-
-// Flash amount — pure BigInt, no float
 const FLASH_AMOUNT_WETH = 100000n * 10n**18n
 
 // ── MULTI-PROVIDER ETH RPC POOL ───────────────────────────────────────────────
-// Never exhausted — parallel calls across all providers, use first response
 const ETH_PROVIDERS = [
-  // Alchemy (primary — set ALCHEMY_ETH_KEY in Railway)
-  () => process.env.ALCHEMY_ETH_KEY && process.env.ALCHEMY_ETH_KEY !== 'demo'
+  process.env.ALCHEMY_ETH_KEY && process.env.ALCHEMY_ETH_KEY !== 'demo'
     ? `https://eth-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_ETH_KEY}` : null,
-  // Infura (secondary — set INFURA_KEY in Railway)
-  () => process.env.INFURA_KEY
+  process.env.INFURA_KEY
     ? `https://mainnet.infura.io/v3/${process.env.INFURA_KEY}` : null,
-  // Drpc (no key needed, high limit)
-  () => 'https://eth.drpc.org',
-  // Llamarpc (no key needed)
-  () => 'https://eth.llamarpc.com',
-  // Ankr (no key needed)
-  () => 'https://rpc.ankr.com/eth',
-  // PublicNode (no key needed)
-  () => 'https://ethereum.publicnode.com',
-  // Cloudflare
-  () => 'https://cloudflare-eth.com',
-  // 1rpc
-  () => 'https://1rpc.io/eth',
-  // BlockPi
-  () => 'https://ethereum.blockpi.network/v1/rpc/public',
-].map(f => f()).filter(Boolean)
+  'https://eth.drpc.org',
+  'https://eth.llamarpc.com',
+  'https://rpc.ankr.com/eth',
+  'https://ethereum.publicnode.com',
+  'https://cloudflare-eth.com',
+  'https://1rpc.io/eth',
+  'https://ethereum.blockpi.network/v1/rpc/public',
+].filter(Boolean)
 
-// Race all providers — use first to respond
 async function ethRPC(method, params = [], timeoutMs = 4000) {
   const calls = ETH_PROVIDERS.map(url =>
     fetch(url, {
@@ -63,8 +46,6 @@ async function ethRPC(method, params = [], timeoutMs = 4000) {
       return d.result
     })
   )
-
-  // Race with Promise.any — first success wins
   try {
     return await Promise.any(calls)
   } catch {
@@ -72,19 +53,18 @@ async function ethRPC(method, params = [], timeoutMs = 4000) {
   }
 }
 
-// ── STATE ────────────────────────────────────────────────────────────────────
-let _computedAddr  = null
-const _deploying   = new Set()
-const _live        = new Set()
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let _computedAddr        = null
+const _deploying         = new Set()
+const _live              = new Set()
 let   _ethBundleInFlight = false
 let   _lastBundleAttempt = 0
-const BUNDLE_COOLDOWN_MS = 13000 // one ETH block
+const BUNDLE_COOLDOWN_MS = 13000
 
-// ── SECTION 1: CREATE2 ADDRESS PRE-COMPUTATION ───────────────────────────────
+// ── CREATE2 ───────────────────────────────────────────────────────────────────
 export function computeCreate2Address(bytecode) {
   const executor = getExecutorAddress()
   if (!executor) return null
-
   const salt         = keccak256(encodePacked(['address','string'], [executor, 'x7sv_v3']))
   const bytecodeHash = keccak256(bytecode)
   const preimage     = encodePacked(
@@ -118,37 +98,51 @@ function buildBootstrapCalldata(chain) {
   return selector + args.slice(2)
 }
 
-// ── SECTION 2: GAS ESTIMATION (multi-source, median) ─────────────────────────
+// ── GAS PARAMS — FIXED ────────────────────────────────────────────────────────
+// EIP-1559 invariant: maxFeePerGas >= maxPriorityFeePerGas — ALWAYS
+//
+// Formula:
+//   baseFee = latest block baseFeePerGas  (real current network cost)
+//   tip     = fixed per attempt           (never derived from volatile percentile)
+//   maxFee  = baseFee * 2 + tip           (mathematically >= tip since baseFee >= 0)
+//
+// At low fees  (base 0.8 gwei): maxFee = 3.1  gwei, tip = 1.5 gwei ✓
+// At high fees (base  50 gwei): maxFee = 101.5 gwei, tip = 1.5 gwei ✓
+// Invariant holds at ANY base fee level.
+//
+// Escalation: tip grows per attempt — miner incentive increases each block
+//   attempt 0: 1.5 gwei  (competitive baseline)
+//   attempt 1: 2.0 gwei  (+33% — missed block 1)
+//   attempt 2: 3.0 gwei  (+100% — missed block 2)
+//   attempt 3: 5.0 gwei  (+233% — last chance, maximum aggression)
+
+const TIPS = [
+  1500000000n,  // attempt 0: 1.5 gwei
+  2000000000n,  // attempt 1: 2.0 gwei
+  3000000000n,  // attempt 2: 3.0 gwei
+  5000000000n,  // attempt 3: 5.0 gwei
+]
+
 async function getGasParams(attempt = 0) {
+  const tip = TIPS[Math.min(attempt, TIPS.length - 1)]
   try {
-    const [feeHist, baseFee] = await Promise.all([
-      ethRPC('eth_feeHistory', [5, 'latest', [80]]),
-      ethRPC('eth_getBlockByNumber', ['latest', false]).then(b => BigInt(b?.baseFeePerGas || '0x3b9aca00'))
-    ])
-
-    const bases = (feeHist?.baseFeePerGas||[]).map(x => BigInt(x||'0x0')).filter(x => x > 0n)
-    const tips  = (feeHist?.reward||[]).flat().map(x => BigInt(x||'0x0')).filter(x => x > 0n)
-    tips.sort((a,b) => Number(a-b))
-
-    const base = bases.length ? bases[bases.length-2] : baseFee
-    const tip  = tips.length ? tips[Math.floor(tips.length*0.8)] : 1500000000n
-
-    // Escalate per attempt
-    const scale = [10n, 15n, 20n, 30n][Math.min(attempt, 3)]
+    const block   = await ethRPC('eth_getBlockByNumber', ['latest', false])
+    const baseFee = BigInt(block?.baseFeePerGas || '0x3b9aca00') // fallback 1 gwei
+    const maxFee  = baseFee * 2n + tip  // always >= tip, absorbs next-block 12.5% increase
     return {
-      maxFeePerGas:         base * 15n / 10n * scale / 10n,
-      maxPriorityFeePerGas: tip  * scale / 10n,
+      maxFeePerGas:         maxFee,
+      maxPriorityFeePerGas: tip,
     }
   } catch {
-    const scale = [10n, 15n, 20n, 30n][Math.min(attempt, 3)]
+    // Fallback: safe static values — invariant still holds
     return {
-      maxFeePerGas:         3000000000n * scale / 10n,
-      maxPriorityFeePerGas: 2000000000n * scale / 10n,
+      maxFeePerGas:         tip * 3n,  // 3x tip = always > tip
+      maxPriorityFeePerGas: tip,
     }
   }
 }
 
-// ── SECTION 3: BUNDLE SUBMISSION (all 6 builders parallel) ───────────────────
+// ── BUNDLE SUBMISSION ─────────────────────────────────────────────────────────
 const BUILDERS = [
   'https://rpc.titanbuilder.xyz',
   'https://rpc.buildernet.org',
@@ -164,12 +158,11 @@ async function submitBundle(txs, blockNum) {
     jsonrpc:'2.0', id:1, method:'eth_sendBundle',
     params:[{ txs, blockNumber:blockHex, minTimestamp:0, maxTimestamp:Math.floor(Date.now()/1000)+60 }]
   })
-
   const results = await Promise.allSettled(
     BUILDERS.map(url =>
       fetch(url, {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
         body,
         signal: AbortSignal.timeout(3000)
       })
@@ -178,25 +171,15 @@ async function submitBundle(txs, blockNum) {
       .catch(() => ({ url, ok:false }))
     )
   )
-
-  const wins = results
+  return results
     .filter(r => r.status==='fulfilled' && r.value.ok)
-    .map(r => r.value.url.split('/')[2].split('.')[1] || r.value.url)
-
-  return wins
+    .map(r => r.value.url.split('/')[2])
 }
 
-// ── SECTION 4: ETHEREUM ZERO-SEED BUNDLE ─────────────────────────────────────
+// ── ETHEREUM ZERO-SEED BUNDLE ─────────────────────────────────────────────────
 async function bootstrapEthereum(artifact) {
-  // Deduplication: one bundle per block
-  const now = Date.now()
-  if (_ethBundleInFlight) {
-    console.log('[BOOTSTRAP] ETH bundle already in flight — skipping duplicate')
-    return null
-  }
-  if (now - _lastBundleAttempt < BUNDLE_COOLDOWN_MS) {
-    return null
-  }
+  if (_ethBundleInFlight) return null
+  if (Date.now() - _lastBundleAttempt < BUNDLE_COOLDOWN_MS) return null
 
   const chain = getChain('ethereum')
   if (!chain?.weth || !chain?.usdc) return null
@@ -205,7 +188,6 @@ async function bootstrapEthereum(artifact) {
   if (!computed) return null
   const { addr, salt } = computed
 
-  // Final on-chain check
   const alreadyLive = await contractExists('ethereum', addr).catch(() => false)
   if (alreadyLive) {
     setContractAddr('ethereum', addr)
@@ -214,15 +196,18 @@ async function bootstrapEthereum(artifact) {
     return addr
   }
 
-  _ethBundleInFlight   = true
-  _lastBundleAttempt   = now
+  _ethBundleInFlight = true
+  _lastBundleAttempt = Date.now()
 
   try {
     console.log('[BOOTSTRAP] ETH zero-seed bundle building...')
     console.log('[BOOTSTRAP] Target address:', addr)
 
-    // Get nonce + block in parallel — use multi-provider pool
     const executor = getExecutorAddress()
+    const wallet   = getWalletClient('ethereum')
+    if (!wallet) return null
+
+    // Get nonce + block + gas in parallel — race across all 8 providers
     const [nonceHex, blockHex, gas] = await Promise.all([
       ethRPC('eth_getTransactionCount', [executor, 'pending']),
       ethRPC('eth_blockNumber', []),
@@ -231,6 +216,8 @@ async function bootstrapEthereum(artifact) {
 
     const nonce    = parseInt(nonceHex, 16)
     const blockNum = parseInt(blockHex, 16)
+
+    console.log(`[BOOTSTRAP] nonce=${nonce} block=${blockNum} maxFee=${gas.maxFeePerGas/1000000000n}gwei tip=${gas.maxPriorityFeePerGas/1000000000n}gwei`)
 
     const constructorArgs = encodeAbiParameters(
       parseAbiParameters('address,address,address,address'),
@@ -246,110 +233,89 @@ async function bootstrapEthereum(artifact) {
     const bootstrapCalldata = buildBootstrapCalldata(chain)
     if (!bootstrapCalldata) return null
 
-    const wallet = getWalletClient('ethereum')
-    if (!wallet) return null
-
-    // Sign deploy tx
-    let signedDeploy
+    // Sign both transactions
+    let signedDeploy, signedExec
     try {
       signedDeploy = await wallet.signTransaction({
-        to:   CREATE2_FACTORY,
-        data: deployCalldata,
-        nonce,
-        gas:  600000n,
-        ...gas,
-        chainId: 1
+        to: CREATE2_FACTORY, data: deployCalldata,
+        nonce, gas: 600000n, chainId: 1, ...gas
       })
     } catch (e) {
-      console.log('[BOOTSTRAP] Sign deploy failed:', e.message?.slice(0,80))
+      console.log('[BOOTSTRAP] Sign deploy failed:', e.message?.slice(0,120))
       return null
     }
 
-    // Sign execute tx (nonce+1 — included in same bundle)
-    let signedExec
     try {
       signedExec = await wallet.signTransaction({
-        to:   addr,
-        data: bootstrapCalldata,
-        nonce: nonce + 1,
-        gas:  900000n,
-        ...gas,
-        chainId: 1
+        to: addr, data: bootstrapCalldata,
+        nonce: nonce + 1, gas: 900000n, chainId: 1, ...gas
       })
     } catch (e) {
-      console.log('[BOOTSTRAP] Sign exec failed:', e.message?.slice(0,80))
+      console.log('[BOOTSTRAP] Sign exec failed:', e.message?.slice(0,120))
       return null
     }
 
-    const txs = [signedDeploy, signedExec]
-
-    // Submit to all 6 builders across 4 blocks with escalating gas
+    // Submit across 4 blocks with escalating tips
     for (let attempt = 0; attempt < 4; attempt++) {
       const targetBlock = blockNum + attempt + 1
-      console.log(`[BOOTSTRAP] ETH attempt ${attempt+1}/4 targeting block ${targetBlock}`)
+      console.log(`[BOOTSTRAP] ETH attempt ${attempt+1}/4 targeting block ${targetBlock} tip=${gas.maxPriorityFeePerGas/1000000000n}gwei`)
 
+      const txs  = [signedDeploy, signedExec]
       const wins = await submitBundle(txs, targetBlock)
+
+      // Submit to next block simultaneously — double coverage
+      submitBundle(txs, targetBlock + 1).catch(() => {})
+
       if (wins.length > 0) {
         console.log(`[BOOTSTRAP] ETH bundle accepted by: ${wins.join(', ')}`)
       }
 
-      // Also submit to next block simultaneously
-      if (attempt < 3) {
-        submitBundle(txs, targetBlock + 1).catch(() => {})
-      }
-
-      // Wait one block then check if deployed
+      // Wait one block
       await new Promise(r => setTimeout(r, 12500))
 
+      // Check if deployed
       const deployed = await contractExists('ethereum', addr).catch(() => false)
       if (deployed) {
         setContractAddr('ethereum', addr)
         _live.add('ethereum')
-        console.log('[BOOTSTRAP] ETH LIVE — zero-seed complete:', addr)
+        console.log('[BOOTSTRAP] ✓ ETH LIVE — zero-seed complete:', addr)
         emit('deploy_success', { chain:'ethereum', address:addr, method:'zero-seed' })
-
-        // Escalate gas for next attempts if more blocks needed
-        const escalatedGas = await getGasParams(attempt + 1)
-        Object.assign(gas, escalatedGas)
-
-        // Propagate to all L2s
         setTimeout(() => propagateToL2s().catch(() => {}), 3000)
         return addr
       }
 
-      // Re-sign with escalated gas for next attempt
+      // Escalate gas for next attempt — re-sign with higher tip
       if (attempt < 3) {
         const newGas = await getGasParams(attempt + 1)
+        console.log(`[BOOTSTRAP] Escalating tip to ${newGas.maxPriorityFeePerGas/1000000000n}gwei`)
         try {
           signedDeploy = await wallet.signTransaction({
-            to:   CREATE2_FACTORY,
-            data: deployCalldata,
-            nonce,
-            gas:  600000n,
-            ...newGas,
-            chainId: 1
+            to: CREATE2_FACTORY, data: deployCalldata,
+            nonce, gas: 600000n, chainId: 1, ...newGas
           })
           signedExec = await wallet.signTransaction({
-            to:   addr,
-            data: bootstrapCalldata,
-            nonce: nonce + 1,
-            gas:  900000n,
-            ...newGas,
-            chainId: 1
+            to: addr, data: bootstrapCalldata,
+            nonce: nonce + 1, gas: 900000n, chainId: 1, ...newGas
           })
-        } catch {}
+          Object.assign(gas, newGas)
+        } catch (e) {
+          console.log('[BOOTSTRAP] Re-sign failed:', e.message?.slice(0,80))
+        }
       }
     }
 
-    console.log('[BOOTSTRAP] ETH zero-seed: 4 attempts completed, checking final state...')
-    const finalCheck = await contractExists('ethereum', addr).catch(() => false)
-    if (finalCheck) {
+    // Final check after all 4 attempts
+    const final = await contractExists('ethereum', addr).catch(() => false)
+    if (final) {
       setContractAddr('ethereum', addr)
       _live.add('ethereum')
+      console.log('[BOOTSTRAP] ✓ ETH LIVE (late confirm):', addr)
       emit('deploy_success', { chain:'ethereum', address:addr, method:'zero-seed-late' })
       setTimeout(() => propagateToL2s().catch(() => {}), 3000)
       return addr
     }
+
+    console.log('[BOOTSTRAP] ETH bundle: 4 attempts exhausted — will retry on next mega-swap')
     return null
 
   } finally {
@@ -357,40 +323,20 @@ async function bootstrapEthereum(artifact) {
   }
 }
 
-// ── SECTION 5: L2 SELF-PROPAGATION ───────────────────────────────────────────
+// ── L2 SELF-PROPAGATION ───────────────────────────────────────────────────────
 async function propagateToL2s() {
-  const chain  = getChain('ethereum')
-  const exec   = getExecutorAddress()
-  if (!chain?.usdc || !exec) return
-
-  // Check USDC balance
-  try {
-    const balHex = await ethRPC('eth_call', [{
-      to:   chain.usdc,
-      data: '0x70a08231' + exec.slice(2).padStart(64,'0')
-    }, 'latest'])
-    const usdcBal = Number(BigInt(balHex || '0x0')) / 1e6
-    console.log(`[BOOTSTRAP] ETH USDC balance post-deploy: $${usdcBal.toFixed(2)}`)
-    if (usdcBal < 5) {
-      console.log('[BOOTSTRAP] Low USDC — L2 deploy uses existing gas if available')
-    }
-  } catch {}
-
-  // Deploy all L2s
   const l2chains = getActiveChains().filter(c => c.name !== 'ethereum')
-  console.log(`[BOOTSTRAP] Propagating to ${l2chains.length} L2s...`)
-
-  // Parallel deployment — L2 gas is cents
+  console.log(`[BOOTSTRAP] Propagating to ${l2chains.length} L2s in parallel...`)
   await Promise.allSettled(
     l2chains.map((l2, i) =>
-      new Promise(r => setTimeout(r, i * 500))
+      new Promise(r => setTimeout(r, i * 300))
         .then(() => deployL2(l2.name))
         .catch(() => {})
     )
   )
 }
 
-// ── SECTION 6: L2 DIRECT DEPLOY ──────────────────────────────────────────────
+// ── L2 DIRECT DEPLOY ──────────────────────────────────────────────────────────
 async function deployL2(chainName) {
   if (_deploying.has(chainName)) return null
   if (_live.has(chainName))      return getContractAddr(chainName)
@@ -408,12 +354,11 @@ async function deployL2(chainName) {
   if (!computed) return null
   const { addr, salt } = computed
 
-  // Check on-chain (handles cross-deploy recovery)
   const onChain = await contractExists(chainName, addr).catch(() => false)
   if (onChain) {
     setContractAddr(chainName, addr)
     _live.add(chainName)
-    console.log('[BOOTSTRAP]', chainName, 'already live on-chain:', addr)
+    console.log('[BOOTSTRAP]', chainName, 'already on-chain:', addr)
     emit('deploy_success', { chain:chainName, address:addr, method:'existing' })
     return addr
   }
@@ -450,7 +395,7 @@ async function deployL2(chainName) {
     setConfig('deploy_status_' + chainName, 'live')
     _deploying.delete(chainName)
 
-    console.log('[BOOTSTRAP]', chainName, 'LIVE:', addr)
+    console.log('[BOOTSTRAP] ✓', chainName, 'LIVE:', addr)
     emit('deploy_success', { chain:chainName, address:addr, method:'l2-direct' })
     return addr
 
@@ -462,22 +407,17 @@ async function deployL2(chainName) {
   }
 }
 
-// ── SECTION 7: SELF-HEALING ───────────────────────────────────────────────────
+// ── SELF-HEALING ──────────────────────────────────────────────────────────────
 async function selfHeal() {
   const artifact = getArtifact()
   if (!artifact) return
-
-  const computed = computeCreate2Address(artifact.bytecode)
-  if (!computed) return
-
   for (const chain of getActiveChains()) {
     const stored = getContractAddr(chain.name)
     if (!stored) continue
-
     try {
       const exists = await contractExists(chain.name, stored)
       if (!exists) {
-        console.log('[BOOTSTRAP] Self-heal:', chain.name, '— redeploying')
+        console.log('[BOOTSTRAP] Self-heal:', chain.name)
         setConfig('contract_' + chain.name, '')
         _live.delete(chain.name)
         if (chain.name === 'ethereum') {
@@ -489,12 +429,11 @@ async function selfHeal() {
         }
       }
     } catch {}
-
     await new Promise(r => setTimeout(r, 200))
   }
 }
 
-// ── SECTION 8: BOOT + EXPORTS ─────────────────────────────────────────────────
+// ── EXPORTS ───────────────────────────────────────────────────────────────────
 export function getBootstrapStatus() {
   const artifact = getArtifact()
   const computed = artifact ? computeCreate2Address(artifact.bytecode) : null
@@ -521,13 +460,11 @@ export async function triggerBootstrap(chainName) {
 }
 
 export async function onMegaSwapDetected() {
-  if (_live.has('ethereum')) return
-  if (_ethBundleInFlight)    return
+  if (_live.has('ethereum'))  return
+  if (_ethBundleInFlight)     return
   if (Date.now() - _lastBundleAttempt < BUNDLE_COOLDOWN_MS) return
-
   const artifact = getArtifact()
   if (!artifact) return
-
   bootstrapEthereum(artifact).catch(e =>
     console.error('[BOOTSTRAP] ETH error:', e.message?.slice(0,80))
   )
@@ -545,35 +482,27 @@ export async function initBootstrap() {
     setConfig('create2_address', computed.addr)
   }
 
-  // Check all chains for existing deployments
   let liveCount = 0
   for (const chain of getActiveChains()) {
     const stored = getContractAddr(chain.name)
-
-    // Check stored address
     if (stored) {
       const exists = await contractExists(chain.name, stored).catch(() => false)
       if (exists) {
-        _live.add(chain.name)
-        liveCount++
+        _live.add(chain.name); liveCount++
         console.log('[BOOTSTRAP]', chain.name, 'RESTORED:', stored)
         emit('deploy_success', { chain:chain.name, address:stored, method:'restored' })
         continue
       }
     }
-
-    // Check CREATE2 address on-chain (redeploy recovery)
     if (computed?.addr) {
       const exists = await contractExists(chain.name, computed.addr).catch(() => false)
       if (exists) {
         setContractAddr(chain.name, computed.addr)
-        _live.add(chain.name)
-        liveCount++
-        console.log('[BOOTSTRAP]', chain.name, 'RECOVERED on-chain:', computed.addr)
+        _live.add(chain.name); liveCount++
+        console.log('[BOOTSTRAP]', chain.name, 'RECOVERED:', computed.addr)
         emit('deploy_success', { chain:chain.name, address:computed.addr, method:'recovered' })
       }
     }
-
     await new Promise(r => setTimeout(r, 100))
   }
 
@@ -585,19 +514,17 @@ export async function initBootstrap() {
     console.log('[BOOTSTRAP] RPC pool ready:', ETH_PROVIDERS.length, 'providers in race mode')
   }
 
-  // L2s: deploy immediately if ETH is live
   if (_live.has('ethereum')) {
     const l2s = getActiveChains().filter(c => c.name !== 'ethereum' && !_live.has(c.name))
     if (l2s.length > 0) {
       console.log('[BOOTSTRAP] Deploying', l2s.length, 'remaining L2s...')
       await Promise.allSettled(
         l2s.map((c, i) =>
-          new Promise(r => setTimeout(r, i * 500)).then(() => deployL2(c.name))
+          new Promise(r => setTimeout(r, i * 300)).then(() => deployL2(c.name))
         )
       )
     }
   }
 
-  // Self-healing every 60s
   setInterval(selfHeal, 60000)
 }
