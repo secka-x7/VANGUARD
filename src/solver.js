@@ -1,5 +1,7 @@
-// X7-SV · solver.js — order flow capture · P8 solver margin · EIP-712
+// X7-SV · solver.js — order flow intake
+// Full implementation is in revenue.js (Stream 1) — this re-exports
 
+export { processOrder, getSolverStats } from './revenue.js'
 import { encodeFunctionData, parseAbi, keccak256, toBytes } from 'viem'
 import { getConfig, setConfig } from './db.js'
 import { getChain } from './chains.js'
