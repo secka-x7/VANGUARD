@@ -1,12 +1,12 @@
-// X7-SV · rpc.js — 6-tier RPC router · tiered WebSocket by chain tier
+// X7-SV · rpc.js — 6-tier RPC router · tiered WebSocket · multi-handler
 
 import WebSocket from 'ws'
 
 const FREE_HTTP = {
-  ethereum:  ['https://eth.llamarpc.com','https://rpc.ankr.com/eth','https://ethereum.publicnode.com'],
-  arbitrum:  ['https://arb1.arbitrum.io/rpc','https://rpc.ankr.com/arbitrum','https://arbitrum.publicnode.com'],
-  polygon:   ['https://polygon.llamarpc.com','https://rpc.ankr.com/polygon','https://polygon.publicnode.com'],
-  base:      ['https://mainnet.base.org','https://rpc.ankr.com/base','https://base.publicnode.com'],
+  ethereum:  ['https://eth.llamarpc.com','https://rpc.ankr.com/eth','https://ethereum.publicnode.com','https://cloudflare-eth.com'],
+  arbitrum:  ['https://arb1.arbitrum.io/rpc','https://rpc.ankr.com/arbitrum','https://arbitrum.publicnode.com','https://arbitrum.llamarpc.com'],
+  polygon:   ['https://polygon.llamarpc.com','https://rpc.ankr.com/polygon','https://polygon.publicnode.com','https://polygon-rpc.com'],
+  base:      ['https://mainnet.base.org','https://rpc.ankr.com/base','https://base.publicnode.com','https://base.llamarpc.com'],
   optimism:  ['https://mainnet.optimism.io','https://rpc.ankr.com/optimism','https://optimism.publicnode.com'],
   avalanche: ['https://api.avax.network/ext/bc/C/rpc','https://rpc.ankr.com/avalanche'],
   bnb:       ['https://bsc-dataseed.bnbchain.org','https://rpc.ankr.com/bsc','https://bsc.publicnode.com'],
@@ -15,16 +15,15 @@ const FREE_HTTP = {
 
 const FREE_WSS = {
   ethereum:  ['wss://eth.llamarpc.com','wss://ethereum.publicnode.com'],
-  arbitrum:  ['wss://arbitrum.publicnode.com'],
+  arbitrum:  ['wss://arbitrum.publicnode.com','wss://arbitrum.llamarpc.com'],
   polygon:   ['wss://polygon.llamarpc.com','wss://polygon.publicnode.com'],
-  base:      ['wss://base.publicnode.com'],
+  base:      ['wss://base.publicnode.com','wss://base.llamarpc.com'],
   optimism:  ['wss://optimism.publicnode.com'],
   avalanche: ['wss://api.avax.network/ext/bc/C/ws'],
   bnb:       ['wss://bsc.publicnode.com'],
   scroll:    ['wss://wss-rpc.scroll.io/ws'],
 }
 
-// WS connections per tier
 const TIER_WS = { 1: 3, 2: 2, 3: 1 }
 
 class RPCRouter {
@@ -43,10 +42,10 @@ class RPCRouter {
       if (!this.avail(n)) continue
       try {
         const r = await fetch(this.providers[n], {
-          method: 'POST',
+          method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ jsonrpc:'2.0', id:1, method, params }),
-          signal: AbortSignal.timeout(8000)
+          body:    JSON.stringify({ jsonrpc:'2.0', id:1, method, params }),
+          signal:  AbortSignal.timeout(5000)
         })
         if (r.status === 429) { this.cooldown[n] = Date.now()+60000; continue }
         if (!r.ok)             { this.cooldown[n] = Date.now()+10000; continue }
@@ -68,12 +67,13 @@ class RPCRouter {
 
 class ChainWS {
   constructor(name, tier) {
-    this.chain   = name
-    this.maxConn = TIER_WS[tier] || 1
-    this.sockets = []
-    this.handlers= {}
-    this.seen    = new Set()
-    this.subs    = []
+    this.chain    = name
+    this.maxConn  = TIER_WS[tier] || 1
+    this.sockets  = []
+    // ── FIXED: handlers is now an array per event, not a single function ──
+    this.handlers = {}  // evt → [fn, fn, ...]
+    this.seen     = new Set()
+    this.subs     = []
   }
 
   dedup(key) {
@@ -83,7 +83,21 @@ class ChainWS {
     return false
   }
 
-  on(evt, fn) { this.handlers[evt] = fn; return this }
+  // ── FIXED: on() pushes to array instead of overwriting ──────────────────
+  on(evt, fn) {
+    if (!this.handlers[evt]) this.handlers[evt] = []
+    this.handlers[evt].push(fn)
+    return this
+  }
+
+  // ── FIXED: emit() calls ALL registered handlers ──────────────────────────
+  _emit(evt, ...args) {
+    const fns = this.handlers[evt]
+    if (!fns?.length) return
+    for (const fn of fns) {
+      try { fn(...args) } catch {}
+    }
+  }
 
   connect(url, idx) {
     if (!url) return
@@ -92,7 +106,7 @@ class ChainWS {
       this.sockets[idx] = ws
       ws.on('open', () => {
         this.subs.forEach(s => ws.send(JSON.stringify(s)))
-        this.handlers.connected?.(idx)
+        this._emit('connected', idx)
       })
       ws.on('message', raw => {
         try {
@@ -101,7 +115,7 @@ class ChainWS {
           if (!log) return
           const key = (log.transactionHash||'') + (log.logIndex||'') + (log.blockNumber||'')
           if (key && this.dedup(key)) return
-          this.handlers.log?.(log, idx)
+          this._emit('log', log, idx)
         } catch {}
       })
       ws.on('error', () => {})
@@ -129,7 +143,7 @@ export function initRPC(chains) {
     _routers[c.name] = new RPCRouter(c.name, c.rpcHttp)
     _ws[c.name]      = new ChainWS(c.name, c.tier||3).start(c.rpcWss)
   })
-  console.log(`[RPC] ${Object.keys(chains).length} chains · 6-tier router · tiered WebSocket`)
+  console.log(`[RPC] ${Object.keys(chains).length} chains · 6-tier router · tiered WebSocket · multi-handler`)
 }
 
 export const rpcCall = (chain, method, params) => {
