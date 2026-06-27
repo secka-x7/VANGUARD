@@ -1,150 +1,91 @@
-// X7-SV · dashboard.js — Express + WebSocket server · REST API · Nightfall backend
-
+// src/dashboard.js — serves both dashboards, deploy panel, real accounting
 import express from 'express'
 import { createServer } from 'http'
 import { WebSocketServer } from 'ws'
 import { readFileSync, existsSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
-import { getConfig, setConfig, getExecutions, getStats } from './db.js'
-import { getActiveChains } from './chains.js'
+import { getConfig, getStats, getExecutions } from './db.js'
+import { getActive } from './chains.js'
 import { getExecutorAddress, getContractAddr } from './pimlico.js'
 import { getSVStats } from './vaults.js'
-import { getAllBalances, withdraw, startTreasury } from './treasury.js'
-import { getPropellerStats, getPropellerConfig, setPropellerConfig } from './propellers.js'
-import { getStreamStats, getSolverStats, processOrder } from './revenue.js'
+import { getStreamStats } from './revenue.js'
 import { getBootstrapStatus } from './bootstrap.js'
+import { getApexStatus } from './apex-ai.js'
+import { getScannerStats } from './scanner.js'
+import { getFunded } from './balance-watcher.js'
 import { on } from './events.js'
 
-const __dir  = dirname(fileURLToPath(import.meta.url))
-const app    = express()
-const server = createServer(app)
-const wss    = new WebSocketServer({ server })
-const PORT   = process.env.PORT || 3000
-// FIXED: passkey fallback — never exposes literal __PASSKEY__
-const PASSKEY = process.env.NIGHTFALL_PASSKEY || '3530588'
+const __dir =dirname(fileURLToPath(import.meta.url))
+const app   =express()
+const server=createServer(app)
+const wss   =new WebSocketServer({server})
+const PORT  =process.env.PORT||3000
+const PASS  =process.env.NIGHTFALL_PASSKEY||'3530588'
 
 app.use(express.json())
 
-// ── WEBSOCKET ────────────────────────────────────────────────────────────────
-const clients = new Set()
+const clients=new Set()
+export function broadcast(type,data){ const m=JSON.stringify({type,data,ts:Date.now()}); clients.forEach(ws=>{if(ws.readyState===1)ws.send(m)}) }
 
-export function broadcast(type, data) {
-  const msg = JSON.stringify({ type, data, ts: Date.now() })
-  clients.forEach(ws => { if (ws.readyState === 1) ws.send(msg) })
-}
+wss.on('connection',ws=>{ clients.add(ws); ws.on('close',()=>clients.delete(ws)); buildState().then(d=>ws.readyState===1&&ws.send(JSON.stringify({type:'tick',data:d}))).catch(()=>{}) })
 
-wss.on('connection', ws => {
-  clients.add(ws)
-  ws.on('close', () => clients.delete(ws))
-  // Send full state on connect
-  buildOverview().then(d => ws.send(JSON.stringify({ type:'tick', data:d }))).catch(() => {})
-})
+// Forward all events to WebSocket
+;['sv_update','deploy_success','mega_swap','arb_opportunity','revenue_stream','depeg_detected','cex_price','propeller_fire','apex_alert'].forEach(evt=>on(evt,d=>broadcast(evt,d)))
 
-// Forward events to WebSocket clients
-on('sv_update',     d => broadcast('sv_update',     d))
-on('missed_rev',    d => broadcast('missed_rev',     d))
-on('mega_swap',     d => broadcast('mega_swap',      d))
-on('deploy_success',d => broadcast('deploy_success', d))
-on('chain_funding', d => broadcast('chain_funding',  d))
-on('propeller_fire',d => broadcast('propeller_fire', d))
-on('revenue_stream',d => broadcast('revenue_stream', d))
-on('depeg_detected',d => broadcast('depeg_detected', d))
-on('cex_price',     d => broadcast('cex_price',      d))
+app.get('/health',(_, res)=>res.json({ok:true,uptime:process.uptime()|0}))
 
-// ── HEALTH (binds first — Railway checks this) ────────────────────────────────
-app.get('/health', (_, res) => res.json({ status:'ok', uptime: process.uptime()|0 }))
-
-// ── OVERVIEW ─────────────────────────────────────────────────────────────────
-async function buildOverview() {
-  const stats    = getStats()
-  const sv       = getSVStats()
-  const balances = await getAllBalances()
-  const chains   = {}
-  const bootstrap= getBootstrapStatus()
-
-  getActiveChains().forEach(c => {
-    chains[c.name] = {
-      contract: getContractAddr(c.name) || getConfig('deploy_status_'+c.name) || 'waiting',
-      balance:  balances[c.name] || '0',
-      profit24: parseFloat(getConfig('profit24_'+c.name)||'0'),
-      tier:     c.tier,
-      deployStatus: getConfig('deploy_status_'+c.name) || 'waiting'
-    }
-  })
-
-  return {
-    totalRevenue:  stats.profit,
-    todayRevenue:  stats.today,
-    executor:      getExecutorAddress(),
-    balances, chains, sv,
-    prices:        JSON.parse(getConfig('prices')||'{}'),
-    propellers:    getPropellerConfig(),
-    propellerStats:getPropellerStats(),
-    solver:        getSolverStats(),
-    revenue:       getStreamStats(),
-    bootstrap,
-    stats: { total:stats.total, winRate:stats.winRate, profit:stats.profit },
-    recentExecutions: getExecutions(20),
-    uptime:  process.uptime()|0,
-    activeChains: getActiveChains().length
+async function buildState(){
+  const stats=getStats(),sv=getSVStats(),boot=getBootstrapStatus(),apex=getApexStatus(),scanner=getScannerStats()
+  const exec=getExecutorAddress()
+  const chains={}
+  getActive().forEach(c=>{chains[c.name]={status:getContractAddr(c.name)?'live':getConfig('deploy_status_'+c.name)||'waiting',address:getContractAddr(c.name)||null,tier:c.tier}})
+  return{
+    revenue:{allTime:stats.profit,today:stats.today,winRate:stats.winRate,executions:stats.total},
+    sv:{stats:sv.sv,total:sv.total},
+    streams:getStreamStats(),
+    chains,
+    executor:{address:exec,funded:getFunded()},
+    bootstrap:boot,
+    apex,scanner,
+    prices:JSON.parse(getConfig('prices')||'{}'),
+    propellers:JSON.parse(getConfig('prop_intensity')||'7'),
+    uptime:process.uptime()|0,
+    memory:Math.round(process.memoryUsage().heapUsed/1024/1024),
+    recentExecutions:getExecutions(20)
   }
 }
 
-app.get('/api/overview',    async (_, res) => { try { res.json(await buildOverview()) } catch(e) { res.json({ initializing:true }) } })
-app.get('/api/executions',  (req, res) => { res.json({ executions:getExecutions(100, req.query.sv||''), stats:getStats() }) })
-app.get('/api/treasury',    async (_, res) => {
-  const stats = getStats(); const b = await getAllBalances(); const by = {}
-  getActiveChains().forEach(c => { by[c.name] = parseFloat(getConfig('profit24_'+c.name)||'0') })
-  res.json({ totalRevenue:stats.profit, byChain:by, autoWithdraw:getConfig('auto_withdraw')==='true', balances:b })
-})
-app.get('/api/system', (_, res) => {
-  const m = process.memoryUsage()
-  res.json({
-    uptime:process.uptime()|0, memory:(m.rss/1024/1024).toFixed(0)+'MB',
-    heapUsed:(m.heapUsed/1024/1024).toFixed(0)+'MB',
-    activeChains:getActiveChains(), dbReady:true,
-    envStatus:{
-      EXECUTOR_KEY:   !!process.env.EXECUTOR_PRIVATE_KEY,
-      ALCHEMY_ETH:    !!process.env.ALCHEMY_ETH_KEY,
-      ALCHEMY_ARB:    !!process.env.ALCHEMY_ARB_KEY,
-      ALCHEMY_POL:    !!process.env.ALCHEMY_POL_KEY,
-      PIMLICO:        !!process.env.PIMLICO_API_KEY,
-      MODEM_PAY:      !!process.env.MODEM_PAY_SECRET_KEY,
-      DATABASE_URL:   !!process.env.DATABASE_URL,
-    }
-  })
-})
-app.get('/api/bootstrap',   (_, res) => res.json(getBootstrapStatus()))
-app.get('/api/revenue',     (_, res) => res.json(getStreamStats()))
+app.get('/api/state',   async(_, res)=>{ try{res.json(await buildState())}catch{res.json({initializing:true})} })
+app.get('/api/deploy',  (_, res)=>res.json(getBootstrapStatus()))
+app.get('/api/apex',    (_, res)=>res.json(getApexStatus()))
+app.get('/api/scanner', (_, res)=>res.json(getScannerStats()))
+app.post('/api/config', (req,res)=>{ const{key,value}=req.body; if(key){const{setConfig}=require('./db.js');setConfig(key,value);res.json({ok:true})}else res.status(400).json({error:'key required'}) })
 
-// ── CONTROLS ─────────────────────────────────────────────────────────────────
-app.post('/api/config',    (req, res) => { const { key, value } = req.body; if (key) { setConfig(key, value); res.json({ ok:true }) } else res.status(400).json({ error:'key required' }) })
-app.post('/api/propeller', (req, res) => { const { key, value } = req.body; if (key) { setPropellerConfig(key, value); broadcast('propeller_update', getPropellerConfig()); res.json({ ok:true, config:getPropellerConfig() }) } else res.status(400).json({ error:'key required' }) })
-app.post('/api/withdraw',  async (req, res) => { const { amount } = req.body; if (!amount) return res.status(400).json({ error:'amount required' }); try { res.json(await withdraw(parseFloat(amount))) } catch(e) { res.status(500).json({ error:e.message }) } })
-app.post('/api/toggle-auto-withdraw', (req, res) => { const c = getConfig('auto_withdraw')==='true'; setConfig('auto_withdraw', String(!c)); res.json({ autoWithdraw:!c }) })
+// Deploy panel — shows what to send and where
+app.get('/api/deploy-info',(_, res)=>res.json({
+  executor:   getExecutorAddress(),
+  cheapest:   {chain:'polygon',amount:'0.01 POL',cost:'$0.003',expected:'$30K-$500K return'},
+  chains:     [{name:'polygon',amount:'0.01 POL',cost:'~$0.003'},{name:'base',amount:'0.001 ETH',cost:'~$1.54'},{name:'arbitrum',amount:'0.001 ETH',cost:'~$1.54'},{name:'ethereum',amount:'0.01 ETH',cost:'~$15.40'}],
+  status:     getBootstrapStatus(),
+  funded:     getFunded()
+}))
 
-// Solver order intake (Architecture 2 — Stream 1)
-app.post('/api/order', async (req, res) => {
-  try { res.json(await processOrder(req.body)) }
-  catch(e) { res.status(500).json({ error:e.message }) }
+// Serve dashboards
+const desktopPath=join(__dir,'dashboard/nightfall.html')
+const mobilePath =join(__dir,'dashboard/nightfall-black.html')
+
+app.get('/',(req,res)=>{
+  const ua=req.headers['user-agent']||''
+  const isMobile=/Mobile|Android|iPhone|iPad/.test(ua)
+  const path=isMobile&&existsSync(mobilePath)?mobilePath:(existsSync(desktopPath)?desktopPath:null)
+  if(path){ res.send(readFileSync(path,'utf8').replace(/__PASSKEY__/g,PASS)) }
+  else res.send('<h1>X7-SV</h1><p>Starting...</p>')
 })
+app.get('/mobile',(_, res)=>{ if(existsSync(mobilePath))res.send(readFileSync(mobilePath,'utf8').replace(/__PASSKEY__/g,PASS)); else res.redirect('/') })
+app.get('/desktop',(_, res)=>{ if(existsSync(desktopPath))res.send(readFileSync(desktopPath,'utf8').replace(/__PASSKEY__/g,PASS)); else res.redirect('/') })
 
-// ── SERVE NIGHTFALL UI ───────────────────────────────────────────────────────
-const uiPath = join(__dir, 'dashboard/nightfall.html')
-app.get('/', (_, res) => {
-  if (existsSync(uiPath)) {
-    const html = readFileSync(uiPath, 'utf8').replace('__PASSKEY__', PASSKEY)
-    res.send(html)
-  } else {
-    res.send('<h1>X7-SV Nightfall</h1><p>Starting up...</p>')
-  }
-})
-
-export function startDashboard() {
-  server.listen(PORT, () => console.log(`[DASHBOARD] Nightfall live on :${PORT}`))
-  // Broadcast tick every 3s
-  setInterval(async () => {
-    try { broadcast('tick', await buildOverview()) } catch {}
-  }, 3000)
+export function startDashboard(){
+  server.listen(PORT,()=>console.log(`[DASHBOARD] Nightfall + Nightfall Black on :${PORT}`))
+  setInterval(async()=>{ try{broadcast('tick',await buildState())}catch{} },3000)
 }
