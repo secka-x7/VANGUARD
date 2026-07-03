@@ -1,100 +1,81 @@
-// X7-SV · cexfeed.js — 4 CEX WebSocket feeds · triggers P6/S3
-
+// CEX WebSocket feeds: Binance, OKX, Bybit
+// Emits cex_price events → scanner uses as synthetic pool price
 import WebSocket from 'ws'
-import { getConfig, setConfig } from './db.js'
-import { p6StatArb } from './propellers.js'
-import { processCEXDEXGap } from './revenue.js'
-import { getActiveChains } from './chains.js'
 import { emit } from './events.js'
+import { setConfig } from './db.js'
 
-let _prices = { ETH: 0, BTC: 0 }
-
-export const getCEXPrice = (sym='ETH') => _prices[sym] || 0
-
-async function onPriceUpdate(symbol, price) {
-  if (!price || price <= 0) return
-  _prices[symbol] = price
-  const prices = JSON.parse(getConfig('prices')||'{}')
-  prices[symbol] = price
-  setConfig('prices', JSON.stringify(prices))
-
-  emit('cex_price', { symbol, price })
-
-  const chains = getActiveChains().filter(c => c.tier === 1)
-  for (const chain of chains) {
-    const dexPrice = parseFloat(getConfig(`dex_price_${chain.name}`)||'0')
-    if (!dexPrice) continue
-    const gap = Math.abs(price - dexPrice) / dexPrice * 100
-    if (gap >= 0.03) {
-      p6StatArb(chain.name, price, dexPrice).catch(() => {})
-      processCEXDEXGap(chain.name, price, dexPrice, symbol).catch(() => {})
-    }
-  }
-}
+const _prices = {}
 
 function connectBinance() {
-  function connect() {
+  const pairs = ['ethusdt','btcusdt','bnbusdt']
+  const ws = new WebSocket(`wss://stream.binance.com:9443/stream?streams=${pairs.map(p=>p+'@bookTicker').join('/')}`)
+  ws.on('open', () => console.log('[CEX] Binance connected'))
+  ws.on('message', raw => {
     try {
-      const ws = new WebSocket('wss://stream.binance.com:9443/ws/ethusdt@trade')
-      ws.on('open',    () => console.log('[CEX] Binance connected'))
-      ws.on('message', raw => {
-        try {
-          const d = JSON.parse(raw.toString())
-          if (d.e === 'trade' && d.s === 'ETHUSDT') onPriceUpdate('ETH', parseFloat(d.p))
-        } catch {}
-      })
-      ws.on('error', () => {})
-      ws.on('close', () => setTimeout(connect, 3000))
-    } catch { setTimeout(connect, 5000) }
-  }
-  connect()
+      const { data } = JSON.parse(raw.toString())
+      if (!data?.b) return
+      const sym = data.s?.replace('USDT','').replace('BTC','BTC')
+      const price = parseFloat(data.b)
+      if (!sym||!price) return
+      _prices[sym] = price
+      updateStored()
+      emit('cex_price', { symbol:sym, price, source:'binance' })
+    } catch {}
+  })
+  ws.on('close', () => setTimeout(connectBinance, 3000))
+  ws.on('error', () => {})
 }
 
 function connectOKX() {
-  function connect() {
+  const ws = new WebSocket('wss://ws.okx.com:8443/ws/v5/public')
+  ws.on('open', () => {
+    console.log('[CEX] OKX connected')
+    ws.send(JSON.stringify({ op:'subscribe', args:[{channel:'tickers',instId:'ETH-USDT'}] }))
+  })
+  ws.on('message', raw => {
     try {
-      const ws = new WebSocket('wss://ws.okx.com:8443/ws/v5/public')
-      ws.on('open', () => {
-        ws.send(JSON.stringify({ op:'subscribe', args:[{ channel:'tickers', instId:'ETH-USDT' }] }))
-        console.log('[CEX] OKX connected')
-      })
-      ws.on('message', raw => {
-        try {
-          const d = JSON.parse(raw.toString())
-          if (d.data?.[0]?.instId === 'ETH-USDT') onPriceUpdate('ETH', parseFloat(d.data[0].last))
-        } catch {}
-      })
-      ws.on('error', () => {})
-      ws.on('close', () => setTimeout(connect, 3000))
-    } catch { setTimeout(connect, 5000) }
-  }
-  connect()
+      const m = JSON.parse(raw.toString())
+      const d = m.data?.[0]
+      if (!d?.bidPx) return
+      const price = parseFloat(d.bidPx)
+      _prices.ETH = (_prices.ETH||price)*0.7 + price*0.3 // smooth
+      updateStored()
+      emit('cex_price', { symbol:'ETH', price, source:'okx' })
+    } catch {}
+  })
+  ws.on('close', () => setTimeout(connectOKX, 3000))
+  ws.on('error', () => {})
 }
 
 function connectBybit() {
-  function connect() {
+  const ws = new WebSocket('wss://stream.bybit.com/v5/public/spot')
+  ws.on('open', () => {
+    console.log('[CEX] Bybit connected')
+    ws.send(JSON.stringify({ op:'subscribe', args:['tickers.ETHUSDT'] }))
+  })
+  ws.on('message', raw => {
     try {
-      const ws = new WebSocket('wss://stream.bybit.com/v5/public/spot')
-      ws.on('open', () => {
-        ws.send(JSON.stringify({ op:'subscribe', args:['tickers.ETHUSDT'] }))
-        console.log('[CEX] Bybit connected')
-      })
-      ws.on('message', raw => {
-        try {
-          const d = JSON.parse(raw.toString())
-          if (d.data?.symbol === 'ETHUSDT') onPriceUpdate('ETH', parseFloat(d.data.lastPrice))
-        } catch {}
-      })
-      ws.on('error', () => {})
-      ws.on('close', () => setTimeout(connect, 3000))
-    } catch { setTimeout(connect, 5000) }
+      const m = JSON.parse(raw.toString())
+      const price = parseFloat(m.data?.bid1Price||0)
+      if (!price) return
+      emit('cex_price', { symbol:'ETH', price, source:'bybit' })
+    } catch {}
+  })
+  ws.on('close', () => setTimeout(connectBybit, 3000))
+  ws.on('error', () => {})
+}
+
+function updateStored() {
+  if (Object.keys(_prices).length) {
+    setConfig('prices', JSON.stringify(_prices))
   }
-  connect()
 }
 
 export function startCEXFeed() {
-  console.log('[CEX] Connecting to 3 CEX feeds (Binance · OKX · Bybit)...')
+  console.log('[CEX] Connecting to Binance · OKX · Bybit')
   connectBinance()
-  setTimeout(connectOKX,   1000)
-  setTimeout(connectBybit, 2000)
+  setTimeout(connectOKX,  500)
+  setTimeout(connectBybit, 1000)
 }
+
+export const getCEXPrices = () => _prices
