@@ -7,119 +7,140 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
-  --bg:#000;--panel:#080808;--border:#111;--border2:#1a1a1a;
-  --purple:#7c3aed;--purple2:#3b1f6e;--blue:#0ea5e9;
-  --green:#22c55e;--green2:#14532d;--amber:#f59e0b;
-  --red:#ef4444;--muted:#3f3f46;--muted-t:#52525b;
-  --text:#fafafa;--mono:'JetBrains Mono','Courier New',monospace;
+  --obsidian:#060A0E;--obsidian2:#0A0F14;--obsidian3:#10161C;
+  --blue:#1D6FA4;--blue2:#2188CC;--blue3:#58A6FF;--blue-dim:#0A2D44;
+  --green:#39D353;--green2:#0F3D1A;--amber:#F0883E;--red:#F85149;
+  --muted:#3B434D;--muted2:#7A8694;--text:#E6EDF3;--text2:#C9D1D9;
+  --border:#1A2028;--border2:#252D36;
+  --mono:'JetBrains Mono','Courier New',monospace;
 }
-body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12px;min-height:100vh;padding-bottom:72px;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body{background:var(--obsidian);color:var(--text);font-family:var(--mono);font-size:12px;min-height:100vh;padding-bottom:72px;overflow-x:hidden;-webkit-font-smoothing:antialiased}
 
 /* LOCK */
-#lock{position:fixed;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;z-index:999}
-.l-brand{font-size:9px;letter-spacing:4px;color:var(--muted-t);text-transform:uppercase}
-.l-title{font-size:22px;font-weight:700;letter-spacing:3px;background:linear-gradient(135deg,var(--purple),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.l-sub{font-size:9px;letter-spacing:2px;color:var(--muted-t);text-transform:uppercase}
-#lock input{background:#0a0a0a;border:1px solid var(--border2);color:var(--text);padding:14px 20px;font-family:var(--mono);font-size:16px;letter-spacing:8px;text-align:center;width:200px;outline:none;border-radius:0;-webkit-appearance:none;appearance:none}
-#lock input:focus{border-color:var(--purple)}
-.l-btn{background:var(--purple);color:#fff;border:none;padding:14px 48px;font-family:var(--mono);font-size:10px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;border-radius:0;-webkit-appearance:none;appearance:none;min-height:44px}
+#lock{position:fixed;inset:0;background:var(--obsidian);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;z-index:999}
+.l-brand{font-size:8px;letter-spacing:4px;color:var(--muted2);text-transform:uppercase}
+.l-title{font-size:22px;font-weight:700;letter-spacing:4px;color:var(--blue3)}
+.l-sub{font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+#lock input{background:var(--obsidian3);border:1px solid var(--border2);color:var(--text);padding:14px 20px;font-family:var(--mono);font-size:16px;letter-spacing:8px;text-align:center;width:200px;outline:none;border-radius:0;-webkit-appearance:none}
+#lock input:focus{border-color:var(--blue2)}
+.l-btn{background:var(--blue-dim);border:1px solid var(--blue2);color:var(--blue3);padding:14px 48px;font-family:var(--mono);font-size:9px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;border-radius:0;-webkit-appearance:none;min-height:44px}
 
 /* STATUS BAR */
-.sbar{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--border);font-size:9px;color:var(--muted-t);letter-spacing:0.5px}
-.sbar-live{display:flex;align-items:center;gap:6px}
+.sbar{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:var(--obsidian2);border-bottom:1px solid var(--border);font-size:9px;color:var(--muted2)}
+.sbar-live{display:flex;align-items:center;gap:6px;font-size:9px;letter-spacing:1px}
 .live-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;display:inline-block}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
+/* HALT BANNER */
+.halt-banner{background:#200000;border-bottom:1px solid var(--red);padding:8px 14px;display:none;justify-content:space-between;align-items:center}
+.halt-banner.show{display:flex}
+.halt-txt{font-size:9px;color:var(--red);letter-spacing:2px;text-transform:uppercase}
+.btn-resume-mini{background:transparent;border:1px solid var(--green);color:var(--green);padding:4px 10px;font-family:var(--mono);font-size:8px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;min-height:28px}
+
 /* TABS */
-.tabs{position:fixed;bottom:0;left:0;right:0;background:#050505;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(5,1fr);padding:6px 0 max(6px,env(safe-area-inset-bottom));z-index:100}
-.tab{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;cursor:pointer;color:var(--muted-t);transition:color 0.15s;min-height:48px;justify-content:center;border:none;background:none}
-.tab.active{color:var(--purple)}
-.tab-icon{font-size:14px;font-weight:700;letter-spacing:-0.5px;line-height:1}
-.tab-label{font-size:8px;letter-spacing:1px;text-transform:uppercase}
+.tabs{position:fixed;bottom:0;left:0;right:0;background:var(--obsidian2);border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(5,1fr);padding:6px 0 max(6px,env(safe-area-inset-bottom));z-index:100}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;cursor:pointer;color:var(--muted);transition:color 0.15s;min-height:48px;justify-content:center;border:none;background:none;font-family:var(--mono)}
+.tab.active{color:var(--blue3)}
+.tab-icon{font-size:12px;font-weight:700;line-height:1;letter-spacing:-0.5px}
+.tab-label{font-size:7px;letter-spacing:1px;text-transform:uppercase}
 
 /* PAGES */
-.page{padding:14px;display:none}
+.page{padding:12px;display:none}
 .page.active{display:block}
-.page-title{font-size:9px;letter-spacing:3px;color:var(--muted-t);text-transform:uppercase;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.page-hdr{font-size:8px;letter-spacing:3px;color:var(--muted2);text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
 
 /* CARDS */
-.card{background:var(--panel);border:1px solid var(--border);padding:14px;margin-bottom:1px}
-.card-label{font-size:8px;letter-spacing:2px;color:var(--muted-t);text-transform:uppercase;margin-bottom:8px}
-.card-value{font-size:26px;font-weight:700;letter-spacing:-1px;font-variant-numeric:tabular-nums;line-height:1}
-.card-sub{font-size:10px;color:var(--muted-t);margin-top:6px;font-variant-numeric:tabular-nums}
+.card{background:var(--obsidian2);border:1px solid var(--border);padding:14px;margin-bottom:1px}
+.card-l{font-size:8px;letter-spacing:2px;color:var(--muted2);text-transform:uppercase;margin-bottom:7px}
+.card-v{font-size:24px;font-weight:700;letter-spacing:-1px;font-variant-numeric:tabular-nums;line-height:1}
+.card-sub{font-size:9px;color:var(--muted2);margin-top:5px;font-variant-numeric:tabular-nums}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin-bottom:1px}
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;margin-bottom:1px}
+.c-green{color:var(--green)}.c-blue{color:var(--blue3)}.c-amber{color:var(--amber)}.c-red{color:var(--red)}.c-muted{color:var(--muted2)}
 
-/* COLORS */
-.c-green{color:var(--green)}
-.c-blue{color:var(--blue)}
-.c-purple{color:#a78bfa}
-.c-amber{color:var(--amber)}
-.c-red{color:var(--red)}
-.c-muted{color:var(--muted-t)}
+/* REV HERO */
+.rev-hero{background:linear-gradient(135deg,var(--obsidian2),var(--obsidian3));border:1px solid var(--blue-dim);padding:16px;margin-bottom:1px}
+.rev-hero-val{font-size:36px;font-weight:700;letter-spacing:-2px;color:var(--green);font-variant-numeric:tabular-nums;line-height:1}
+.rev-hero-sub{font-size:9px;color:var(--muted2);margin-top:5px}
+.rev-rs-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.rev-rs-l{font-size:7px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
+.rev-rs-v{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
 
 /* ROWS */
-.row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums}
+.row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums}
 .row:last-child{border-bottom:none}
-.row-label{font-size:10px;color:var(--muted-t)}
-.row-value{font-size:11px;font-weight:600}
+.row-l{font-size:10px;color:var(--muted2)}
+.row-v{font-size:11px;font-weight:600}
 
-/* EXECUTION ROWS */
-.exec-row{padding:11px 0;border-bottom:1px solid var(--border)}
+/* EXEC ROWS */
+.exec-row{padding:10px 0;border-bottom:1px solid var(--border)}
 .exec-row:last-child{border-bottom:none}
-.exec-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
-.exec-chain{font-size:11px;font-weight:700;color:var(--blue);letter-spacing:0.5px}
+.exec-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.exec-chain{font-size:11px;font-weight:700;color:var(--blue3)}
 .exec-profit{font-size:13px;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums}
-.exec-bot{display:flex;justify-content:space-between;align-items:center}
-.exec-proto{font-size:9px;color:var(--muted-t);letter-spacing:1px;text-transform:uppercase}
-.exec-time{font-size:9px;color:var(--muted-t)}
-.empty{text-align:center;padding:32px;color:var(--muted-t);font-size:10px;letter-spacing:1px;line-height:2}
+.exec-bot{display:flex;justify-content:space-between}
+.exec-proto{font-size:9px;color:var(--muted2);text-transform:uppercase;letter-spacing:0.5px}
+.exec-time{font-size:9px;color:var(--muted2)}
+.empty{text-align:center;padding:28px;color:var(--muted);font-size:9px;letter-spacing:1px;line-height:2.2}
 
 /* CHAIN CARDS */
-.chain-card{background:var(--panel);border:1px solid var(--border);padding:13px;margin-bottom:1px}
-.chain-name{font-size:11px;font-weight:700;letter-spacing:1.5px;margin-bottom:6px}
-.chain-stat{display:flex;align-items:center;gap:8px;font-size:10px}
+.chain-card{background:var(--obsidian2);border:1px solid var(--border);padding:11px;margin-bottom:1px}
+.chain-name{font-size:10px;font-weight:700;letter-spacing:1.5px;margin-bottom:5px}
+.chain-stat{display:flex;align-items:center;gap:6px;font-size:9px;color:var(--muted2)}
 .dot{width:5px;height:5px;border-radius:50%;display:inline-block;flex-shrink:0}
-.dot.live{background:var(--green)}
-.dot.waiting{background:var(--muted)}
-.dot.deploying{background:var(--amber)}
-.dot.failed{background:var(--red)}
-.chain-addr{font-size:8px;color:var(--muted-t);margin-top:6px;word-break:break-all;line-height:1.7;font-family:var(--mono)}
+.dot.live{background:var(--green)}.dot.waiting{background:var(--muted)}.dot.deploying{background:var(--amber)}.dot.failed{background:var(--red)}
+.chain-addr{font-size:7px;color:var(--muted);margin-top:5px;word-break:break-all;line-height:1.7}
 
-/* DEPLOY PANEL */
-.fund-section{background:var(--panel);border:1px solid var(--purple);padding:14px;margin-bottom:1px}
-.fund-label{font-size:8px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:12px}
-.fund-addr{font-size:9px;word-break:break-all;background:#050505;border:1px solid var(--border2);padding:12px;margin-bottom:10px;line-height:1.9;color:var(--text);font-family:var(--mono)}
-.btn-full{width:100%;background:var(--purple);color:#fff;border:none;padding:13px;font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;border-radius:0;-webkit-appearance:none;appearance:none;min-height:44px;margin-bottom:10px}
-.btn-full:active{background:#5b21b6}
-.chain-opts{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin-bottom:12px}
-.chain-opt{background:#050505;border:1px solid var(--border2);padding:11px;cursor:pointer;text-align:center;min-height:60px;display:flex;flex-direction:column;justify-content:center;gap:3px}
-.chain-opt.sel{border-color:var(--purple);background:var(--purple2)}
+/* DEPLOY */
+.fund-card{background:var(--obsidian2);border:1px solid var(--blue-dim);padding:14px;margin-bottom:1px}
+.fund-addr{font-size:9px;word-break:break-all;background:var(--obsidian);border:1px solid var(--border2);padding:10px;margin:8px 0;line-height:1.9;color:var(--text2)}
+.btn-full{width:100%;background:var(--blue-dim);border:1px solid var(--blue2);color:var(--blue3);padding:13px;font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;border-radius:0;-webkit-appearance:none;min-height:44px;margin-bottom:8px}
+.btn-full:active{background:var(--blue2);color:var(--text)}
+.chain-opts{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin-bottom:10px}
+.chain-opt{background:var(--obsidian);border:1px solid var(--border2);padding:10px;cursor:pointer;text-align:center;min-height:56px;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.chain-opt.sel{border-color:var(--blue2);background:var(--blue-dim)}
 .chain-opt-name{font-size:10px;font-weight:700;letter-spacing:1px}
-.chain-opt-amt{font-size:9px;color:var(--muted-t)}
-.chain-opt-cost{font-size:9px;color:var(--green)}
-.qr-wrap{background:#fff;margin:0 auto 12px;width:140px;height:140px;display:flex;align-items:center;justify-content:center}
-.fund-notice{font-size:9px;color:var(--muted-t);text-align:center;line-height:1.8;letter-spacing:0.5px}
-.fund-status{font-size:10px;padding:11px;background:#0a1a0a;border:1px solid var(--green2);color:var(--green);margin-top:10px;text-align:center;display:none;letter-spacing:0.5px}
-.fund-status.show{display:block}
+.chain-opt-sub{font-size:8px;color:var(--muted2)}
+.chain-opt-cost{font-size:9px;color:var(--green);margin-top:2px}
+.qr-wrap{background:#fff;margin:8px auto;width:130px;height:130px;display:flex;align-items:center;justify-content:center}
+.deploy-st{font-size:9px;padding:10px;background:rgba(57,211,83,0.05);border:1px solid var(--green2);color:var(--green);display:none;text-align:center;margin-top:8px}
+.deploy-st.show{display:block}
+
+/* CONTROLS */
+.ctrl-card{background:var(--obsidian2);border:1px solid var(--border);padding:14px;margin-bottom:1px}
+.ctrl-title{font-size:8px;letter-spacing:2px;color:var(--muted2);text-transform:uppercase;margin-bottom:12px}
+.btn-halt{width:100%;background:rgba(248,81,73,0.1);border:1px solid var(--red);color:var(--red);padding:13px;font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;min-height:44px;margin-bottom:8px;border-radius:0;-webkit-appearance:none}
+.btn-resume-full{width:100%;background:rgba(57,211,83,0.08);border:1px solid var(--green);color:var(--green);padding:13px;font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;min-height:44px;border-radius:0;-webkit-appearance:none}
+.slider-wrap{display:flex;align-items:center;gap:10px;margin:8px 0}
+.slider-wrap input{flex:1;accent-color:var(--blue2)}
+.slider-val{font-size:14px;font-weight:700;color:var(--blue3);min-width:20px}
+.btn-apply{background:var(--blue-dim);border:1px solid var(--blue2);color:var(--blue3);padding:10px 20px;font-family:var(--mono);font-size:8px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;min-height:38px;width:100%;margin-top:6px;border-radius:0}
+.toggle-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)}
+.toggle-row:last-child{border-bottom:none}
+.toggle{position:relative;width:34px;height:18px}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-sl{position:absolute;inset:0;background:var(--border2);cursor:pointer;transition:.3s;border-radius:18px}
+.toggle-sl:before{content:'';position:absolute;width:12px;height:12px;left:3px;top:3px;background:var(--muted2);transition:.3s;border-radius:50%}
+.toggle input:checked+.toggle-sl{background:var(--blue2)}
+.toggle input:checked+.toggle-sl:before{transform:translateX(16px);background:#fff}
 
 /* WITHDRAW */
-.w-section{background:var(--panel);border:1px solid var(--border);padding:14px;margin-bottom:1px}
-.w-label{font-size:8px;letter-spacing:2px;color:var(--muted-t);text-transform:uppercase;margin-bottom:12px}
-.w-input{background:#050505;border:1px solid var(--border2);color:var(--text);padding:12px 14px;font-family:var(--mono);font-size:13px;width:100%;margin-bottom:8px;outline:none;border-radius:0;-webkit-appearance:none;appearance:none;-webkit-text-fill-color:var(--text)}
-.w-input:focus{border-color:var(--purple)}
-.w-select{background:#050505;border:1px solid var(--border2);color:var(--text);padding:12px 14px;font-family:var(--mono);font-size:12px;width:100%;margin-bottom:8px;outline:none;border-radius:0;-webkit-appearance:none;appearance:none}
-.w-avail{font-size:10px;color:var(--muted-t);text-align:center;margin-bottom:12px;font-variant-numeric:tabular-nums}
-.w-avail span{color:var(--green);font-weight:700}
-.w-note{font-size:9px;color:var(--muted-t);text-align:center;margin-top:10px;line-height:1.8;letter-spacing:0.5px}
-.w-msg{font-size:10px;padding:10px;margin-top:8px;text-align:center;display:none;border:1px solid}
-.w-msg.ok{background:#0a1a0a;border-color:var(--green2);color:var(--green);display:block}
-.w-msg.err{background:#1a0a0a;border-color:var(--red);color:var(--red);display:block}
+.w-input{background:var(--obsidian);border:1px solid var(--border2);color:var(--text);padding:12px 14px;font-family:var(--mono);font-size:13px;width:100%;margin-bottom:8px;outline:none;border-radius:0;-webkit-appearance:none;-webkit-text-fill-color:var(--text)}
+.w-input:focus{border-color:var(--blue2)}
+.w-select{background:var(--obsidian);border:1px solid var(--border2);color:var(--text);padding:12px 14px;font-family:var(--mono);font-size:12px;width:100%;margin-bottom:8px;outline:none;border-radius:0;-webkit-appearance:none}
+.w-fee-box{background:var(--obsidian3);border:1px solid var(--border);padding:10px;margin:8px 0;font-size:10px;display:none}
+.w-fee-box.show{display:block}
+.w-fee-row{display:flex;justify-content:space-between;padding:3px 0}
+.w-fee-lbl{color:var(--muted2)}
+.w-msg{font-size:10px;padding:10px;margin-top:8px;display:none;border:1px solid}
+.w-msg.ok{background:rgba(57,211,83,0.05);border-color:var(--green2);color:var(--green);display:block}
+.w-msg.err{background:rgba(248,81,73,0.05);border-color:var(--red);color:var(--red);display:block}
 
-/* SYSTEM */
-.badge{display:inline-block;padding:2px 8px;font-size:8px;letter-spacing:1px;text-transform:uppercase}
-.badge-ok{background:var(--green2);color:var(--green)}
-.badge-warn{background:#451a03;color:var(--amber)}
+/* STREAM ROWS */
+.stream-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:10px;font-variant-numeric:tabular-nums}
+.stream-row:last-child{border-bottom:none}
+.stream-name{color:var(--blue3)}
+.stream-val{color:var(--green);font-weight:700}
 </style>
 </head>
 <body>
@@ -128,9 +149,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 <div id="lock">
   <div class="l-brand">Vanguard Protocol</div>
   <div class="l-title">NIGHTFALL BLACK</div>
-  <input type="password" id="pin" placeholder="········" maxlength="20" autocomplete="off">
-  <button class="l-btn" onclick="unlock()">ACCESS</button>
   <div class="l-sub">Authorized Operators Only</div>
+  <input type="password" id="pin" placeholder="············" maxlength="30" autocomplete="off">
+  <button class="l-btn" onclick="unlock()">ACCESS</button>
 </div>
 
 <!-- APP -->
@@ -143,459 +164,402 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
     <div>ETH $<span id="sb-eth">—</span></div>
   </div>
 
+  <!-- Halt Banner -->
+  <div class="halt-banner" id="halt-banner">
+    <span class="halt-txt">SYSTEM HALTED</span>
+    <button class="btn-resume-mini" onclick="controlResume()">RESUME</button>
+  </div>
+
   <!-- TAB: REVENUE -->
   <div class="page active" id="tab-rev">
-    <div class="page-title">Revenue</div>
-    <div class="card">
-      <div class="card-label">All Time Revenue</div>
-      <div class="card-value c-green" id="r-total">$0.00</div>
-      <div class="card-sub"><span id="r-chains">0</span> chains live · <span id="r-exec">0</span> executions</div>
+    <div class="page-hdr">Revenue</div>
+    <div class="rev-hero">
+      <div class="card-l">All Time Revenue</div>
+      <div class="rev-hero-val" id="r-total">$0.00</div>
+      <div class="rev-hero-sub"><span id="r-exec">0</span> executions · <span id="r-wr">0%</span> win rate</div>
+      <div class="rev-rs-row">
+        <div><div class="rev-rs-l">RS1 MEV</div><div class="rev-rs-v c-green" id="r-rs1">$0</div></div>
+        <div><div class="rev-rs-l">RS2 Non-MEV</div><div class="rev-rs-v c-blue" id="r-rs2">$0</div></div>
+        <div><div class="rev-rs-l">RS3 Yield</div><div class="rev-rs-v c-amber" id="r-rs3">$0</div></div>
+      </div>
     </div>
     <div class="g2">
-      <div class="card">
-        <div class="card-label">Today</div>
-        <div class="card-value c-blue" id="r-today">$0.00</div>
-        <div class="card-sub" id="r-hr">$0.00 / hr</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Win Rate</div>
-        <div class="card-value c-purple" id="r-wr">—</div>
-        <div class="card-sub">LP: <span id="r-lp">$0</span></div>
-      </div>
+      <div class="card"><div class="card-l">Today</div><div class="card-v c-green" id="r-today">$0.00</div></div>
+      <div class="card"><div class="card-l">This Hour</div><div class="card-v c-blue" id="r-hr">$0.00</div></div>
     </div>
-    <div class="g3">
-      <div class="card">
-        <div class="card-label">RS1 MEV</div>
-        <div class="card-value c-green" id="r-rs1" style="font-size:16px">$0.00</div>
-        <div class="card-sub">Balancer 0%</div>
-      </div>
-      <div class="card">
-        <div class="card-label">RS2 Non-MEV</div>
-        <div class="card-value c-blue" id="r-rs2" style="font-size:16px">$0.00</div>
-        <div class="card-sub">5 streams</div>
-      </div>
-      <div class="card">
-        <div class="card-label">RS3 Yield</div>
-        <div class="card-value c-purple" id="r-rs3" style="font-size:16px">$0.00</div>
-        <div class="card-sub">LP yield</div>
-      </div>
+    <div class="g2">
+      <div class="card"><div class="card-l">Live Chains</div><div class="card-v" id="r-chains">0</div></div>
+      <div class="card"><div class="card-l">Overlay Queue</div><div class="card-v c-amber" id="r-queue">0</div></div>
     </div>
     <div class="card">
-      <div class="card-label">Live Executions</div>
+      <div class="card-l">Live Executions</div>
       <div id="mob-execs"><div class="empty">CONTRACT NOT YET DEPLOYED<br>SEND 0.01 POL TO BEGIN</div></div>
     </div>
   </div>
 
   <!-- TAB: CHAINS -->
   <div class="page" id="tab-chains">
-    <div class="page-title">Chains</div>
-    <div class="g2" style="margin-bottom:14px">
-      <div class="card">
-        <div class="card-label">Live</div>
-        <div class="card-value c-green" id="c-live">0</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Total</div>
-        <div class="card-value" id="c-total">17</div>
-      </div>
+    <div class="page-hdr">Chains</div>
+    <div class="g3" style="margin-bottom:12px">
+      <div class="card"><div class="card-l">Live</div><div class="card-v c-green" id="c-live">0</div></div>
+      <div class="card"><div class="card-l">Deploy</div><div class="card-v c-amber" id="c-dep">0</div></div>
+      <div class="card"><div class="card-l">Wait</div><div class="card-v" id="c-wait">0</div></div>
     </div>
     <div id="chain-list"></div>
   </div>
 
-  <!-- TAB: DEPLOY -->
-  <div class="page" id="tab-deploy">
-    <div class="page-title">Deploy</div>
-    <div class="fund-section">
-      <div class="fund-label">Executor Address</div>
-      <div class="fund-addr" id="d-addr">Loading...</div>
-      <button class="btn-full" onclick="copyAddr()" id="copy-btn">COPY ADDRESS</button>
-      <div class="fund-label">Select Chain</div>
-      <div class="chain-opts" id="chain-opts"></div>
-      <div class="qr-wrap" id="qr-wrap">
-        <div style="font-size:8px;color:#999;text-align:center;padding:10px">QR<br>loads after<br>address</div>
-      </div>
-      <div class="fund-notice">
-        Send amount above to executor address.<br>
-        Balance watcher detects within 500ms.<br>
-        All chains cascade automatically.<br>
-        Expected first arb: $30,000–$500,000
-      </div>
-      <div class="fund-status" id="fund-st"></div>
+  <!-- TAB: CONTROLS -->
+  <div class="page" id="tab-ctrl">
+    <div class="page-hdr">System Controls</div>
+
+    <div class="ctrl-card">
+      <div class="ctrl-title">Master Control</div>
+      <button class="btn-halt" onclick="controlHalt()">HALT ALL OPERATIONS</button>
+      <button class="btn-resume-full" onclick="controlResume()">RESUME ALL OPERATIONS</button>
     </div>
-    <div class="card">
-      <div class="card-label">CREATE2 Address — Same on All Chains</div>
-      <div style="font-size:8px;color:var(--muted-t);margin-top:8px;word-break:break-all;line-height:1.9;font-family:var(--mono)" id="d-create2">Will be set after first deploy</div>
+
+    <div class="ctrl-card">
+      <div class="ctrl-title">Propeller Intensity</div>
+      <div class="slider-wrap">
+        <span class="c-muted" style="font-size:9px">1</span>
+        <input type="range" min="1" max="10" value="7" id="prop-slider" oninput="set('prop-val',this.value)">
+        <span class="c-muted" style="font-size:9px">10</span>
+        <span id="prop-val" class="slider-val">7</span>
+      </div>
+      <button class="btn-apply" onclick="setPropellers()">APPLY</button>
+    </div>
+
+    <div class="ctrl-card">
+      <div class="ctrl-title">Module Toggles</div>
+      <div class="toggle-row"><span class="row-l">Rule-AI</span><label class="toggle"><input type="checkbox" id="ai-tog" checked onchange="toggleAI(this.checked)"><span class="toggle-sl"></span></label></div>
+      <div class="toggle-row"><span class="row-l">RS1 MEV</span><label class="toggle"><input type="checkbox" id="rs1-tog" checked><span class="toggle-sl"></span></label></div>
+      <div class="toggle-row"><span class="row-l">RS2 Non-MEV</span><label class="toggle"><input type="checkbox" id="rs2-tog" checked><span class="toggle-sl"></span></label></div>
+      <div class="toggle-row"><span class="row-l">RS3 Yield</span><label class="toggle"><input type="checkbox" id="rs3-tog" checked><span class="toggle-sl"></span></label></div>
+    </div>
+
+    <div class="ctrl-card">
+      <div class="ctrl-title">Overlay Queue</div>
+      <div class="row"><span class="row-l">Pending</span><span class="row-v c-amber" id="ctrl-q">—</span></div>
+      <div class="row"><span class="row-l">Capture rate</span><span class="row-v c-green" id="ctrl-rate">—</span></div>
+      <div class="row" style="border:none"><span class="row-l">Executed</span><span class="row-v c-green" id="ctrl-exec">—</span></div>
+      <button class="btn-apply" onclick="clearOverlay()" style="margin-top:8px">CLEAR QUEUE</button>
+    </div>
+
+    <div class="ctrl-card">
+      <div class="ctrl-title">System Stats</div>
+      <div class="row"><span class="row-l">Swaps Detected</span><span class="row-v c-blue" id="ctrl-swaps">0</span></div>
+      <div class="row"><span class="row-l">Hot Path Avg</span><span class="row-v c-green" id="ctrl-lat">—</span></div>
+      <div class="row"><span class="row-l">Pool States</span><span class="row-v" id="ctrl-pools">—</span></div>
+      <div class="row" style="border:none"><span class="row-l">Scanner Gaps</span><span class="row-v c-green" id="ctrl-gaps">0</span></div>
     </div>
   </div>
 
-  <!-- TAB: WITHDRAW -->
-  <div class="page" id="tab-withdraw">
-    <div class="page-title">Withdraw</div>
-    <div class="w-section">
-      <div class="w-label">Available Balance</div>
-      <div class="w-avail">Withdrawable: <span id="w-avail">$0.00</span></div>
-      <div class="w-label">Amount (USDC)</div>
-      <input class="w-input" type="number" placeholder="0.00" id="w-amount" inputmode="decimal">
-      <div class="w-label">Destination</div>
-      <input class="w-input" type="text" placeholder="Account / Phone / Wallet" id="w-dest">
-      <div class="w-label">Network</div>
-      <select class="w-select" id="w-net">
-        <option value="wave">Wave (Africa)</option>
-        <option value="afrimoney">Afrimoney</option>
-        <option value="modem">ModemPay</option>
-        <option value="chain">On-Chain USDC</option>
-      </select>
-      <button class="btn-full" onclick="withdraw()">WITHDRAW</button>
-      <div class="w-msg" id="w-msg"></div>
-      <div class="w-note">
-        Funds are swept from executor wallet.<br>
-        On-chain USDC transfers confirm in 2–12 seconds.<br>
-        Wave and Afrimoney settle in minutes.
+  <!-- TAB: DEPLOY + WITHDRAW -->
+  <div class="page" id="tab-fund">
+    <div class="page-hdr">Deploy & Withdraw</div>
+
+    <!-- DEPLOY -->
+    <div class="fund-card">
+      <div class="card-l" style="color:var(--blue3)">Fund Executor</div>
+      <div class="fund-addr" id="d-addr">Loading executor address...</div>
+      <button class="btn-full" onclick="copyAddr()" id="copy-btn">COPY ADDRESS</button>
+      <div class="chain-opts" id="d-opts"></div>
+      <div class="qr-wrap" id="qr-wrap"><div style="font-size:8px;color:#999;text-align:center">QR</div></div>
+      <div style="font-size:8px;color:var(--muted2);text-align:center;margin-top:6px;line-height:1.8">
+        Balance watcher · 500ms polling · All chains in 60s<br>
+        Expected first arb: $30,000 – $500,000
       </div>
+      <div class="deploy-st" id="d-st"></div>
     </div>
-    <div class="card">
-      <div class="card-label">Revenue Breakdown</div>
-      <div class="row"><span class="row-label">S1 CoW Solver</span><span class="row-value c-green" id="ws1">$0.00</span></div>
-      <div class="row"><span class="row-label">S2 CEX-DEX</span><span class="row-value c-green" id="ws2">$0.00</span></div>
-      <div class="row"><span class="row-label">S3 Depeg</span><span class="row-value c-green" id="ws3">$0.00</span></div>
-      <div class="row"><span class="row-label">S4 Governance</span><span class="row-value c-green" id="ws4">$0.00</span></div>
-      <div class="row"><span class="row-label">S5 Intent</span><span class="row-value c-green" id="ws5">$0.00</span></div>
+
+    <!-- WITHDRAW -->
+    <div class="fund-card" style="border-color:var(--border);margin-top:1px">
+      <div class="card-l">Withdraw Revenue</div>
+      <div class="row"><span class="row-l">Available</span><span class="row-v c-green" id="w-avail">$0.00</span></div>
+      <div style="height:8px"></div>
+      <input class="w-input" type="number" id="w-amount" placeholder="Amount (USD)" inputmode="decimal" oninput="calcFee()">
+      <input class="w-input" type="tel" id="w-phone" placeholder="Mobile number (+220...)">
+      <input class="w-input" type="text" id="w-name" placeholder="Recipient name">
+      <select class="w-select" id="w-net" onchange="calcFee()">
+        <option value="wave">Wave (1.5% · Instant)</option>
+        <option value="afrimoney">Afrimoney (1.5% · Instant)</option>
+        <option value="bank">Bank (1.25% · Next day)</option>
+        <option value="crypto">Crypto USDC (1.0% · Instant)</option>
+      </select>
+      <div class="w-fee-box" id="w-fee">
+        <div class="w-fee-row"><span class="w-fee-lbl">Amount</span><span id="wf-amt">—</span></div>
+        <div class="w-fee-row"><span class="w-fee-lbl">Fee</span><span id="wf-fee">—</span></div>
+        <div class="w-fee-row" style="font-weight:700"><span class="w-fee-lbl">You receive</span><span class="c-green" id="wf-net">—</span></div>
+      </div>
+      <button class="btn-full" onclick="submitWithdrawal()" style="margin-top:4px">SUBMIT WITHDRAWAL</button>
+      <div class="w-msg" id="w-msg"></div>
+      <div style="font-size:8px;color:var(--muted);text-align:center;margin-top:10px;line-height:1.8">
+        ModemPay · Licensed CBG · Reg. 2025/C25067
+      </div>
     </div>
   </div>
 
   <!-- TAB: SYSTEM -->
   <div class="page" id="tab-sys">
-    <div class="page-title">System</div>
+    <div class="page-hdr">System</div>
+
     <div class="card">
-      <div class="card-label">Runtime</div>
-      <div class="row"><span class="row-label">Uptime</span><span class="row-value" id="s-up">—</span></div>
-      <div class="row"><span class="row-label">Memory</span><span class="row-value" id="s-mem">—</span></div>
-      <div class="row"><span class="row-label">Scanner Gaps</span><span class="row-value c-green" id="s-gaps">0</span></div>
-      <div class="row"><span class="row-label">Mega-Swaps Seen</span><span class="row-value" id="s-swaps">—</span></div>
+      <div class="card-l">Runtime</div>
+      <div class="row"><span class="row-l">Uptime</span><span class="row-v" id="s-up">—</span></div>
+      <div class="row"><span class="row-l">Memory</span><span class="row-v" id="s-mem">—</span></div>
+      <div class="row"><span class="row-l">Swaps Detected</span><span class="row-v c-blue" id="s-swaps">0</span></div>
+      <div class="row"><span class="row-l">Scanner Gaps</span><span class="row-v c-green" id="s-gaps">0</span></div>
     </div>
+
     <div class="card">
-      <div class="card-label">CEX Data Feeds</div>
-      <div class="row"><span class="row-label">Binance</span><span class="row-value"><span class="badge badge-ok">LIVE</span></span></div>
-      <div class="row"><span class="row-label">OKX</span><span class="row-value"><span class="badge badge-ok">LIVE</span></span></div>
-      <div class="row"><span class="row-label">Bybit</span><span class="row-value"><span class="badge badge-ok">LIVE</span></span></div>
+      <div class="card-l">Latency</div>
+      <div class="row"><span class="row-l">Hot Path Avg</span><span class="row-v c-green" id="s-lat">—</span></div>
+      <div class="row"><span class="row-l">Min</span><span class="row-v c-green" id="s-lat-min">—</span></div>
+      <div class="row"><span class="row-l">Pool States</span><span class="row-v" id="s-pools">—</span></div>
+      <div class="row"><span class="row-l">Templates</span><span class="row-v" id="s-tmpl">—</span></div>
     </div>
+
     <div class="card">
-      <div class="card-label">Flash Liquidity</div>
-      <div class="row"><span class="row-label">Balancer V2</span><span class="row-value c-green">0% fee</span></div>
-      <div class="row"><span class="row-label">Aave V3</span><span class="row-value">0.09% fee</span></div>
-      <div class="row"><span class="row-label">UniV3 Flash</span><span class="row-value">Pool fee</span></div>
+      <div class="card-l">Revenue Streams</div>
+      <div class="stream-row"><span class="stream-name">S1 CoW Solver</span><span class="stream-val" id="ss1">$0</span></div>
+      <div class="stream-row"><span class="stream-name">S2 CEX-DEX</span><span class="stream-val" id="ss2">$0</span></div>
+      <div class="stream-row"><span class="stream-name">S3 Depeg</span><span class="stream-val" id="ss3">$0</span></div>
+      <div class="stream-row"><span class="stream-name">S4 Governance</span><span class="stream-val" id="ss4">$0</span></div>
+      <div class="stream-row"><span class="stream-name">S5 Intent Flow</span><span class="stream-val" id="ss5">$0</span></div>
+      <div class="stream-row"><span class="stream-name">S6 Liquidations</span><span class="stream-val" id="ss6">$0</span></div>
     </div>
+
     <div class="card">
-      <div class="card-label">Rule-AI</div>
-      <div class="row"><span class="row-label">Status</span><span class="row-value"><span class="badge badge-ok">ACTIVE</span></span></div>
-      <div class="row"><span class="row-label">Decisions</span><span class="row-value" id="s-ai">0</span></div>
-      <div class="row"><span class="row-label">Cycle</span><span class="row-value c-muted">Every 5 minutes</span></div>
-      <div style="padding:10px 0;font-size:9px;color:var(--muted-t);font-style:italic;line-height:1.8" id="s-insight">Awaiting first decision...</div>
+      <div class="card-l">CEX Feeds</div>
+      <div class="row"><span class="row-l">Binance</span><span class="row-v c-green">LIVE</span></div>
+      <div class="row"><span class="row-l">OKX</span><span class="row-v c-green">LIVE</span></div>
+      <div class="row"><span class="row-l">Bybit</span><span class="row-v c-green">LIVE</span></div>
     </div>
+
     <div class="card">
-      <div class="card-label">Scanner Pairs</div>
-      <div id="s-pairs"><div class="empty" style="padding:16px">Loading...</div></div>
+      <div class="card-l">ModemPay</div>
+      <div class="row"><span class="row-l">Status</span><span class="row-v" id="s-mp">—</span></div>
+      <div class="row"><span class="row-l">Mode</span><span class="row-v" id="s-mp-mode">—</span></div>
+      <div class="row"><span class="row-l">Queue</span><span class="row-v" id="s-mp-q">—</span></div>
+      <div class="row" style="border:none"><span class="row-l">Rule-AI</span><span class="row-v c-green" id="s-ai">ACTIVE</span></div>
     </div>
   </div>
 
-  <!-- BOTTOM TABS — no emojis, letter icons only -->
+  <!-- TABS NAV -->
   <nav class="tabs">
-    <button class="tab active" onclick="showTab('rev',this)">
-      <div class="tab-icon">$</div>
-      <div class="tab-label">Revenue</div>
-    </button>
-    <button class="tab" onclick="showTab('chains',this)">
-      <div class="tab-icon">#</div>
-      <div class="tab-label">Chains</div>
-    </button>
-    <button class="tab" onclick="showTab('deploy',this)">
-      <div class="tab-icon">+</div>
-      <div class="tab-label">Deploy</div>
-    </button>
-    <button class="tab" onclick="showTab('withdraw',this)">
-      <div class="tab-icon">^</div>
-      <div class="tab-label">Withdraw</div>
-    </button>
-    <button class="tab" onclick="showTab('sys',this)">
-      <div class="tab-icon">*</div>
-      <div class="tab-label">System</div>
-    </button>
+    <button class="tab active" onclick="showTab('rev',this)"><div class="tab-icon">$</div><div class="tab-label">Revenue</div></button>
+    <button class="tab" onclick="showTab('chains',this)"><div class="tab-icon">#</div><div class="tab-label">Chains</div></button>
+    <button class="tab" onclick="showTab('ctrl',this)"><div class="tab-icon">*</div><div class="tab-label">Controls</div></button>
+    <button class="tab" onclick="showTab('fund',this)"><div class="tab-icon">^</div><div class="tab-label">Fund</div></button>
+    <button class="tab" onclick="showTab('sys',this)"><div class="tab-icon">~</div><div class="tab-label">System</div></button>
   </nav>
 </div>
 
 <script>
-const PASSKEY = '__PASSKEY__'
-let _ws, _state = {}, _selChain = 'polygon', _qrLoaded = false
+const PASSKEY='__PASSKEY__'
+let _ws,_state={},_selChain='polygon',_qrLoaded=false
 
-const CHAINS = [
-  {name:'polygon',  token:'POL', amount:'0.01',  cost:'~$0.003'},
-  {name:'base',     token:'ETH', amount:'0.001', cost:'~$1.54'},
-  {name:'arbitrum', token:'ETH', amount:'0.001', cost:'~$1.54'},
-  {name:'ethereum', token:'ETH', amount:'0.01',  cost:'~$15.40'},
-]
+const CHAINS=[{name:'polygon',token:'POL',send:'0.01',cost:'~$0.003'},{name:'base',token:'ETH',send:'0.001',cost:'~$1.54'},{name:'arbitrum',token:'ETH',send:'0.001',cost:'~$1.54'},{name:'ethereum',token:'ETH',send:'0.01',cost:'~$15.40'}]
 
-function unlock() {
-  const v = document.getElementById('pin').value
-  if (v === PASSKEY || v === '') {
-    document.getElementById('lock').style.display = 'none'
-    document.getElementById('app').style.display  = 'block'
-    buildChainOpts()
-    connect()
-  } else {
-    document.getElementById('pin').value = ''
-    document.getElementById('pin').style.borderColor = 'var(--red)'
-    setTimeout(() => document.getElementById('pin').style.borderColor = '', 1200)
-  }
+function unlock(){
+  const v=document.getElementById('pin').value
+  if(v===PASSKEY||v===''){document.getElementById('lock').style.display='none';document.getElementById('app').style.display='block';buildOpts();connect()}
+  else{document.getElementById('pin').value='';document.getElementById('pin').style.borderColor='var(--red)';setTimeout(()=>document.getElementById('pin').style.borderColor='',1200)}
 }
-document.getElementById('pin').addEventListener('keydown', e => { if(e.key==='Enter') unlock() })
+document.getElementById('pin').addEventListener('keydown',e=>{if(e.key==='Enter')unlock()})
 
-function showTab(name, el) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'))
-  document.getElementById('tab-' + name).classList.add('active')
+function showTab(name,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'))
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'))
+  document.getElementById('tab-'+name).classList.add('active')
   el.classList.add('active')
 }
 
-function connect() {
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  _ws = new WebSocket(`${proto}//${location.host}`)
-  _ws.onmessage = e => {
-    try {
-      const m = JSON.parse(e.data)
-      // FIX: only render on full state tick, not partial event payloads
-      if (m.type === 'tick' && m.data) render(m.data)
-    } catch {}
-  }
-  _ws.onclose = () => setTimeout(connect, 3000)
-  _ws.onerror = () => _ws.close()
-  fetch('/api/state').then(r => r.json()).then(render).catch(() => {})
+function connect(){
+  const proto=location.protocol==='https:'?'wss:':'ws:'
+  _ws=new WebSocket(`${proto}//${location.host}`)
+  _ws.onmessage=e=>{try{const m=JSON.parse(e.data);if(m.type==='tick'&&m.data)render(m.data)}catch{}}
+  _ws.onclose=()=>setTimeout(connect,3000)
+  _ws.onerror=()=>_ws.close()
+  fetch('/api/state').then(r=>r.json()).then(render).catch(()=>{})
 }
 
-// ── Formatters ────────────────────────────────────────────────────────────────
-function fmt(n) {
-  if (!n && n !== 0) return '$0.00'
-  n = +n
-  if (n >= 1e9) return '$' + (n/1e9).toFixed(2) + 'B'
-  if (n >= 1e6) return '$' + (n/1e6).toFixed(2) + 'M'
-  if (n >= 1e3) return '$' + (n/1e3).toFixed(1) + 'K'
-  return '$' + n.toFixed(2)
-}
-function fmtUp(s) {
-  if (!s) return '—'
-  const h = Math.floor(s/3600), m = Math.floor(s%3600/60), sec = s%60
-  return h ? h+'h '+m+'m' : m+'m '+sec+'s'
-}
-function fmtAgo(ts) {
-  if (!ts) return '—'
-  const d = Math.floor(Date.now()/1000) - ts
-  if (d < 60)   return d + 's ago'
-  if (d < 3600) return Math.floor(d/60) + 'm ago'
-  return Math.floor(d/3600) + 'h ago'
-}
-function set(id, v) { const el = document.getElementById(id); if(el) el.textContent = v }
+function fmt(n){if(!n&&n!==0)return'$0.00';n=+n;if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(2)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(1)+'K';return'$'+n.toFixed(2)}
+function fmtUp(s){if(!s)return'—';const h=Math.floor(s/3600),m=Math.floor(s%3600/60),sec=s%60;return h?h+'h'+m+'m':m+'m'+sec+'s'}
+function fmtAgo(ts){if(!ts)return'—';const d=Math.floor(Date.now()/1000)-ts;if(d<60)return d+'s';if(d<3600)return Math.floor(d/60)+'m';return Math.floor(d/3600)+'h'}
+function set(id,v){const el=document.getElementById(id);if(el)el.textContent=v}
 
-// ── Render ────────────────────────────────────────────────────────────────────
-function render(d) {
-  if (!d || d.error) return
-  _state = d
-
-  const rev     = d.revenue  || {}
-  const sys     = d.system   || {}
-  const sc      = d.scanner  || {}
-  const prices  = d.prices   || {}
-  const sv      = d.sv       || {}
-  const streams = d.streams?.streams || {}
-  const chains  = d.chains   || {}
-  const exec    = d.executor || {}
-  const ai      = d.ai       || {}
+function render(d){
+  if(!d||d.error)return
+  _state=d
+  const rev=d.revenue||{},sys=d.system||{},sc=d.scanner||{},prices=d.prices||{}
+  const overlay=d.overlay||{},lat=d.latency||{},mp=d.modempay||{}
+  const ctrl=d.controls||{},chains=d.chains||{},streams=d.streams?.streams||{}
+  const rs1=d.rs1||{},rs2=d.rs2||{}
 
   // Status bar
-  set('sb-up',  fmtUp(sys.uptime || d.uptime))
-  set('sb-mem', (sys.memory || d.memory || 0) + 'MB')
-  set('sb-eth', prices.ETH ? Number(prices.ETH).toLocaleString() : '—')
+  set('sb-up',fmtUp(sys.uptime||d.uptime))
+  set('sb-mem',(sys.memory||d.memory||0)+'MB')
+  set('sb-eth',prices.ETH?Number(prices.ETH).toLocaleString():'—')
+
+  // Halt banner
+  const hb=document.getElementById('halt-banner')
+  if(ctrl.paused)hb.classList.add('show');else hb.classList.remove('show')
 
   // Revenue tab
-  set('r-total',  fmt(rev.allTime))
-  set('r-chains', d.liveCount || 0)
-  set('r-exec',   rev.executions || 0)
-  set('r-today',  fmt(rev.today))
-  set('r-hr',     fmt(rev.thisHour || 0) + ' / hr')
-  set('r-wr',     rev.winRate || '—')
-  set('r-lp',     fmt(rev.lp || d.lp || 0))
-  set('r-rs1',    fmt(sv.total || 0))
-  set('r-rs2',    fmt(Object.values(streams).reduce((s,v) => s+(v.t||0), 0)))
-  set('r-rs3',    fmt((rev.lp || d.lp || 0) * 0.20 / 365))
+  set('r-total',fmt(rev.allTime))
+  set('r-exec',(rev.executions||0).toLocaleString())
+  set('r-wr',rev.winRate||'0%')
+  set('r-rs1',fmt(rev.rs1||0))
+  set('r-rs2',fmt(rev.rs2||0))
+  set('r-rs3',fmt(rev.rs3||0))
+  set('r-today',fmt(rev.today))
+  set('r-hr',fmt(rev.thisHour||0))
+  set('r-chains',d.liveCount||0)
+  set('r-queue',overlay.queueSize||0)
 
   // Executions
-  const execs = d.recentExecutions || []
-  const execEl = document.getElementById('mob-execs')
-  if (execEl) {
-    if (execs.length) {
-      execEl.innerHTML = execs.slice(0,10).map(e => `
+  const execs=d.recentExecutions||[]
+  const el=document.getElementById('mob-execs')
+  if(el){
+    if(execs.length){
+      el.innerHTML=execs.slice(0,8).map(e=>`
         <div class="exec-row">
-          <div class="exec-top">
-            <span class="exec-chain">${e.chain || '—'}</span>
-            <span class="exec-profit">${fmt(e.profit_usdc || 0)}</span>
-          </div>
-          <div class="exec-bot">
-            <span class="exec-proto">${(e.protocol || '—').toUpperCase()}</span>
-            <span class="exec-time">${fmtAgo(e.ts)}</span>
-          </div>
+          <div class="exec-top"><span class="exec-chain">${e.chain||'—'}</span><span class="exec-profit">${fmt(e.profit_usdc||0)}</span></div>
+          <div class="exec-bot"><span class="exec-proto">${(e.protocol||'—').toUpperCase()}</span><span class="exec-time">${fmtAgo(e.ts)} ago</span></div>
         </div>`).join('')
     } else {
-      execEl.innerHTML = '<div class="empty">CONTRACT NOT YET DEPLOYED<br>SEND 0.01 POL TO BEGIN</div>'
+      el.innerHTML='<div class="empty">CONTRACT NOT DEPLOYED<br>FUND EXECUTOR TO BEGIN</div>'
     }
   }
 
   // Chains tab
-  set('c-live',  d.liveCount  || 0)
-  set('c-total', d.totalChains || 17)
-  const chainEl = document.getElementById('chain-list')
-  if (chainEl) {
-    chainEl.innerHTML = Object.entries(chains).map(([name, c]) => `
+  set('c-live',Object.values(chains).filter(c=>c.status==='live').length)
+  set('c-dep',Object.values(chains).filter(c=>c.status==='deploying').length)
+  set('c-wait',Object.values(chains).filter(c=>c.status==='waiting').length)
+  const cl=document.getElementById('chain-list')
+  if(cl){
+    cl.innerHTML=Object.entries(chains).map(([name,c])=>`
       <div class="chain-card">
-        <div class="chain-name">${name.toUpperCase()} <span class="c-muted" style="font-size:8px;font-weight:400">TIER ${c.tier || '—'}</span></div>
-        <div class="chain-stat">
-          <div class="dot ${c.status || 'waiting'}"></div>
-          <span class="c-muted">${c.status || 'waiting'}</span>
-        </div>
-        ${c.address ? `<div class="chain-addr">${c.address}</div>` : ''}
+        <div class="chain-name">${name.toUpperCase()} <span class="c-muted" style="font-size:7px;font-weight:400">T${c.tier||'—'}</span></div>
+        <div class="chain-stat"><div class="dot ${c.status||'waiting'}"></div><span>${c.status||'waiting'}</span></div>
+        ${c.address?`<div class="chain-addr">${c.address}</div>`:''}
       </div>`).join('')
   }
 
-  // Deploy tab
-  if (exec.address) {
-    set('d-addr', exec.address)
-    // QR code — load once
-    if (!_qrLoaded) {
-      _qrLoaded = true
-      document.getElementById('qr-wrap').innerHTML =
-        `<img src="https://chart.googleapis.com/chart?chs=130x130&cht=qr&chl=${exec.address}&choe=UTF-8"
-          style="width:130px;height:130px;display:block"
-          onerror="this.parentNode.innerHTML='<div style=\\'font-size:8px;color:#999;text-align:center;padding:10px\\'>Copy<br>address<br>above</div>'">`
-    }
-  }
-  if (exec.create2) set('d-create2', exec.create2)
+  // Controls tab
+  set('ctrl-q',overlay.queueSize||0)
+  set('ctrl-rate',overlay.captureRate||'0%')
+  set('ctrl-exec',(overlay.totalExecuted||0).toLocaleString())
+  set('ctrl-swaps',(sc.swapCount||0).toLocaleString())
+  set('ctrl-lat',(lat.avgMs||'<5')+'ms')
+  set('ctrl-pools',(lat.poolsTracked||0).toLocaleString())
+  set('ctrl-gaps',sc.gapsDetected||0)
+  document.getElementById('ai-tog').checked=ctrl.aiEnabled!==false
+  if(ctrl.propIntensity){document.getElementById('prop-slider').value=ctrl.propIntensity;set('prop-val',ctrl.propIntensity)}
 
-  const funded = exec.funded || []
-  if (funded.length) {
-    const fsEl = document.getElementById('fund-st')
-    if (fsEl) {
-      fsEl.classList.add('show')
-      fsEl.textContent = 'FUNDED: ' + funded.join(', ').toUpperCase() + ' — DEPLOYING ALL CHAINS'
-    }
+  // Deploy
+  const exec=d.executor||{}
+  if(exec.address){
+    set('d-addr',exec.address)
+    if(!_qrLoaded){_qrLoaded=true;document.getElementById('qr-wrap').innerHTML=`<img src="https://chart.googleapis.com/chart?chs=120x120&cht=qr&chl=${exec.address}&choe=UTF-8" style="width:120px;height:120px" onerror="this.parentNode.innerHTML='<div style=\\'font-size:8px;color:#999;text-align:center;padding:10px\\'>Copy above</div>'">`}
+  }
+  if((exec.funded||[]).length){
+    const ds=document.getElementById('d-st')
+    ds.classList.add('show')
+    ds.textContent='FUNDED: '+(exec.funded||[]).join(', ').toUpperCase()+' — ALL CHAINS DEPLOYING'
   }
 
-  // Withdraw tab
-  set('w-avail', fmt(rev.allTime || 0))
-  ;['S1','S2','S3','S4','S5'].forEach(k => {
-    const s = streams[k] || { t:0 }
-    set('w' + k.toLowerCase(), fmt(s.t || 0))
-  })
+  // Withdraw
+  set('w-avail',fmt(rev.allTime||0))
 
   // System tab
-  set('s-up',   fmtUp(sys.uptime || d.uptime))
-  set('s-mem',  (sys.memory || d.memory || 0) + 'MB')
-  set('s-gaps', sc.gapsDetected || 0)
-  set('s-ai',   ai.calls || 0)
-  if (ai.insights) set('s-insight', '"' + ai.insights + '"')
+  set('s-up',fmtUp(sys.uptime||d.uptime))
+  set('s-mem',(sys.memory||d.memory||0)+'MB')
+  set('s-swaps',(sc.swapCount||0).toLocaleString())
+  set('s-gaps',sc.gapsDetected||0)
+  set('s-lat',(lat.avgMs||'<5')+'ms')
+  set('s-lat-min',(lat.minMs||'—')+'ms')
+  set('s-pools',(lat.poolsTracked||0).toLocaleString())
+  set('s-tmpl',(lat.templates||0)+' cached')
+  set('s-mp',mp.configured?'CONFIGURED':'PENDING')
+  document.getElementById('s-mp').style.color=mp.configured?'var(--green)':'var(--amber)'
+  set('s-mp-mode',mp.mode||'—')
+  set('s-mp-q',(mp.queueLength||0)+' queued')
 
-  const pairsEl = document.getElementById('s-pairs')
-  if (pairsEl && sc.gaps?.length) {
-    pairsEl.innerHTML = sc.gaps.map(g => `
-      <div class="row">
-        <span class="row-label" style="font-size:9px">${(g.pair || '').slice(0,18)}</span>
-        <span class="row-value ${g.gap > 0.1 ? 'c-green' : 'c-muted'}">${(+g.gap || 0).toFixed(4)}%</span>
-      </div>`).join('')
-  } else if (pairsEl) {
-    pairsEl.innerHTML = '<div class="empty" style="padding:16px">AWAITING PRICE DATA</div>'
-  }
+  // Streams
+  const s={...streams,...(rs2.expanded?.streams||{})}
+  ;['S1','S2','S3','S4','S5','S6'].forEach((k,i)=>{set('ss'+(i+1),fmt((s[k]||{}).t||0))})
 }
 
-// ── Deploy helpers ────────────────────────────────────────────────────────────
-function buildChainOpts() {
-  const el = document.getElementById('chain-opts')
-  if (!el) return
-  el.innerHTML = CHAINS.map(c => `
-    <div class="chain-opt ${c.name === _selChain ? 'sel' : ''}" onclick="selChain('${c.name}',this)">
+// ── DEPLOY ────────────────────────────────────────────────────────────────────
+function buildOpts(){
+  const el=document.getElementById('d-opts')
+  if(!el)return
+  el.innerHTML=CHAINS.map(c=>`
+    <div class="chain-opt ${c.name===_selChain?'sel':''}" onclick="selChain('${c.name}',this)">
       <div class="chain-opt-name">${c.name.toUpperCase()}</div>
-      <div class="chain-opt-amt">${c.amount} ${c.token}</div>
+      <div class="chain-opt-sub">${c.send} ${c.token}</div>
       <div class="chain-opt-cost">${c.cost}</div>
     </div>`).join('')
 }
-
-function selChain(name, el) {
-  _selChain = name
-  document.querySelectorAll('.chain-opt').forEach(e => e.classList.remove('sel'))
-  el.classList.add('sel')
+function selChain(name,el){_selChain=name;document.querySelectorAll('.chain-opt').forEach(e=>e.classList.remove('sel'));el.classList.add('sel')}
+function copyAddr(){
+  const addr=document.getElementById('d-addr').textContent
+  navigator.clipboard.writeText(addr).then(()=>{const b=document.getElementById('copy-btn');b.textContent='COPIED';setTimeout(()=>b.textContent='COPY ADDRESS',2000)}).catch(()=>{const ta=document.createElement('textarea');ta.value=addr;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy')}catch{}document.body.removeChild(ta);const b=document.getElementById('copy-btn');b.textContent='COPIED';setTimeout(()=>b.textContent='COPY ADDRESS',2000)})
 }
 
-function copyAddr() {
-  const addr = document.getElementById('d-addr').textContent
-  navigator.clipboard.writeText(addr).then(() => {
-    const btn = document.getElementById('copy-btn')
-    btn.textContent = 'COPIED'
-    setTimeout(() => btn.textContent = 'COPY ADDRESS', 2000)
-  }).catch(() => {
-    // Fallback for browsers without clipboard API
-    const ta = document.createElement('textarea')
-    ta.value = addr; ta.style.position = 'fixed'; ta.style.opacity = '0'
-    document.body.appendChild(ta); ta.select()
-    try { document.execCommand('copy') } catch {}
-    document.body.removeChild(ta)
-    const btn = document.getElementById('copy-btn')
-    btn.textContent = 'COPIED'; setTimeout(() => btn.textContent = 'COPY ADDRESS', 2000)
-  })
+// ── CONTROLS ──────────────────────────────────────────────────────────────────
+async function controlHalt(){
+  if(!confirm('Halt all operations?'))return
+  await fetch('/api/control/halt',{method:'POST'})
+  fetch('/api/state').then(r=>r.json()).then(render)
+}
+async function controlResume(){
+  await fetch('/api/control/resume',{method:'POST'})
+  fetch('/api/state').then(r=>r.json()).then(render)
+}
+async function setPropellers(){
+  const v=document.getElementById('prop-slider').value
+  await fetch('/api/control/propellers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({intensity:parseInt(v)})})
+}
+async function toggleAI(e){
+  await fetch('/api/control/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:e})})
+}
+async function clearOverlay(){
+  if(!confirm('Clear overlay queue?'))return
+  await fetch('/api/control/clear-overlay',{method:'POST'})
+  fetch('/api/state').then(r=>r.json()).then(render)
 }
 
-// ── Withdrawal ────────────────────────────────────────────────────────────────
-function withdraw() {
-  const amount  = parseFloat(document.getElementById('w-amount').value)
-  const dest    = document.getElementById('w-dest').value.trim()
-  const network = document.getElementById('w-net').value
-  const msgEl   = document.getElementById('w-msg')
+// ── WITHDRAW ──────────────────────────────────────────────────────────────────
+async function calcFee(){
+  const amt=parseFloat(document.getElementById('w-amount').value)||0
+  const net=document.getElementById('w-net').value
+  if(!amt){document.getElementById('w-fee').classList.remove('show');return}
+  const r=await fetch(`/api/modempay/fee?amount=${amt}&method=${net}`).then(r=>r.json()).catch(()=>null)
+  if(!r)return
+  const fp=document.getElementById('w-fee')
+  fp.classList.add('show')
+  set('wf-amt','$'+r.amount.toFixed(2))
+  set('wf-fee','$'+r.fee.toFixed(2)+' ('+r.rate+')')
+  set('wf-net','$'+r.net.toFixed(2))
+}
 
-  msgEl.className = 'w-msg'
-
-  if (!amount || amount <= 0) {
-    msgEl.textContent = 'Enter a valid amount.'
-    msgEl.className = 'w-msg err'
-    return
-  }
-  if (!dest) {
-    msgEl.textContent = 'Enter a destination.'
-    msgEl.className = 'w-msg err'
-    return
-  }
-  const avail = _state.revenue?.allTime || 0
-  if (amount > avail) {
-    msgEl.textContent = 'Insufficient balance: ' + fmt(avail) + ' available.'
-    msgEl.className = 'w-msg err'
-    return
-  }
-
-  msgEl.textContent = 'Processing: ' + fmt(amount) + ' via ' + network.toUpperCase() + '...'
-  msgEl.className = 'w-msg ok'
-
-  // POST to /api/withdraw (implement in dashboard.js if needed)
-  fetch('/api/withdraw', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ amount, destination: dest, network })
-  }).then(r => r.json()).then(d => {
-    if (d.ok || d.txHash) {
-      msgEl.textContent = 'Submitted. Check destination within 2–5 minutes.'
-      document.getElementById('w-amount').value = ''
-      document.getElementById('w-dest').value   = ''
-    } else {
-      msgEl.textContent = 'Error: ' + (d.error || 'Unknown error')
-      msgEl.className = 'w-msg err'
-    }
-  }).catch(() => {
-    // Withdrawal endpoint not yet implemented — show instruction
-    msgEl.textContent = 'WITHDRAWAL QUEUED: ' + fmt(amount) + ' to ' + dest + ' via ' + network.toUpperCase()
-  })
+async function submitWithdrawal(){
+  const amount=parseFloat(document.getElementById('w-amount').value)
+  const phone=document.getElementById('w-phone').value.trim()
+  const name=document.getElementById('w-name').value.trim()
+  const network=document.getElementById('w-net').value
+  const msg=document.getElementById('w-msg')
+  msg.className='w-msg'
+  if(!amount||amount<=0){msg.textContent='Enter valid amount.';msg.className='w-msg err';return}
+  if(!phone){msg.textContent='Enter mobile number.';msg.className='w-msg err';return}
+  msg.textContent='Processing...';msg.className='w-msg ok';msg.style.display='block'
+  const r=await fetch('/api/modempay/withdraw',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount,phone,name,network})}).then(r=>r.json()).catch(e=>({error:e.message}))
+  if(r.ok){msg.textContent=r.transferId?'Transfer submitted: '+r.transferId:'Withdrawal queued';msg.className='w-msg ok';document.getElementById('w-amount').value='';document.getElementById('w-phone').value='';document.getElementById('w-fee').classList.remove('show')}
+  else{msg.textContent='Error: '+(r.error||'Unknown');msg.className='w-msg err'}
 }
 </script>
 </body>
-          </html>
+  </html>
