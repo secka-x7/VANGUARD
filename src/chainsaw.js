@@ -3,15 +3,18 @@
 // Auto-discovers new chains via DeFiLlama every 24hr.
 // Multicall3: 0xcA11bde05977b3631167028862bE2a173976CA11 (universal)
 // Source: chainlist.org, drpc.org, alchemy.com/chain-connect
+// PATCHED Jul 11 2026: dead WS URLs set to null — HTTP polling only for these chains
+// DEAD_WS: cronos,metis,klaytn,rootstock,fraxtal,linea,conflux,unichain,
+//           ink,berachain,evmos,okc,telos,mantle,scroll,canto,taiko
+// BNB: removed wss://bsc-ws-node.nariox.org (permanent timeout) — bsc.drpc.org only
 
-const MC3  = '0xcA11bde05977b3631167028862bE2a173976CA11'  // Multicall3 universal
-const BALV = '0xBA12222222228d8Ba445958a75a0704d566BF2C8'  // Balancer V2 universal
-const UR2  = '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45'  // UniV3 SwapRouter02
-const UQ2  = '0x61fFE014bA17989E743c5F6cB21bF9697530B21e'  // QuoterV2
-const UF3  = '0x1F98431c8aD98523631AE4a59f267346ea31F984'  // UniV3 Factory
+const MC3  = '0xcA11bde05977b3631167028862bE2a173976CA11'
+const BALV = '0xBA12222222228d8Ba445958a75a0704d566BF2C8'
+const UR2  = '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45'
+const UQ2  = '0x61fFE014bA17989E743c5F6cB21bF9697530B21e'
+const UF3  = '0x1F98431c8aD98523631AE4a59f267346ea31F984'
 
-// drpc.org public endpoints — no API key, no rate limit concerns for MEV
-const D = (chain) => `https://${chain}.drpc.org`
+const D  = (chain) => `https://${chain}.drpc.org`
 const DW = (chain) => `wss://${chain}.drpc.org`
 
 const CHAINS_CORE = {
@@ -28,14 +31,14 @@ const CHAINS_CORE = {
     wbtc:'0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
     router:UR2, quoter:UQ2, factory:UF3, flash:BALV,
     aave:'0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2', mc3:MC3,
-    flashAlt:'0x60744434d6339a6B27d73d9Eda62b6F66a0a04FA', // MakerDAO
+    flashAlt:'0x60744434d6339a6B27d73d9Eda62b6F66a0a04FA',
   },
   arbitrum: {
     id:42161, tier:1, native:'ETH', minProfit:5, gasLimit:800000n,
     rpcH: process.env.ALCHEMY_ARB_KEY && process.env.ALCHEMY_ARB_KEY!=='demo'
       ? `https://arb-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_ARB_KEY}` : 'https://arb1.arbitrum.io/rpc',
     rpcW: process.env.ALCHEMY_ARB_KEY && process.env.ALCHEMY_ARB_KEY!=='demo'
-      ? `wss://arb-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_ARB_KEY}` : 'wss://arb1.arbitrum.io/ws',
+      ? `wss://arb-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_ARB_KEY}` : DW('arbitrum'),
     usdc:'0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
     weth:'0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
     usdt:'0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9',
@@ -57,7 +60,8 @@ const CHAINS_CORE = {
   },
   bnb: {
     id:56, tier:1, native:'BNB', minProfit:5, gasLimit:800000n,
-    rpcH:'https://bsc-dataseed.bnbchain.org', rpcW:'wss://bsc-ws-node.nariox.org',
+    rpcH:'https://bsc-dataseed.bnbchain.org',
+    rpcW: DW('bsc'),   // wss://bsc-ws-node.nariox.org REMOVED — permanent timeout
     rpcH2:'https://bsc-dataseed1.defibit.io', rpcH3:D('bsc'),
     usdc:'0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d',
     weth:'0x2170Ed0880ac9A755fd29B2688956BD959F933F8',
@@ -114,7 +118,8 @@ const CHAINS_CORE = {
   },
   linea: {
     id:59144, tier:1, native:'ETH', minProfit:5, gasLimit:800000n,
-    rpcH:'https://rpc.linea.build', rpcW:'wss://rpc.linea.build',
+    rpcH:'https://rpc.linea.build',
+    rpcW: null,   // HTTP 200 on WS upgrade — not a WS endpoint. HTTP polling only.
     usdc:'0x176211869cA2b568f2A7D4EE941E073a821EE1ff',
     weth:'0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34',
     router:'0x5aB53a0A89B21E7F68b9aFaF7E0Ee792F2EA77C',
@@ -136,7 +141,8 @@ const CHAINS_CORE = {
   // ── TIER 2 (TVL $100M–$1B) ────────────────────────────────────────────────
   scroll: {
     id:534352, tier:2, native:'ETH', minProfit:5, gasLimit:800000n,
-    rpcH:'https://rpc.scroll.io', rpcW:'wss://wss-rpc.scroll.io/ws',
+    rpcH:'https://rpc.scroll.io',
+    rpcW: null,   // consistent timeout on wss://wss-rpc.scroll.io/ws. HTTP polling only.
     usdc:'0x06eFdBFf2a14a7c8E15944D1F4A48F9F95F663A4',
     weth:'0x5300000000000000000000000000000000000004',
     router:'0xfc30937f5cDe93Df8d48aCAF7e6f5D8D8A31F636',
@@ -147,7 +153,8 @@ const CHAINS_CORE = {
   },
   mantle: {
     id:5000, tier:2, native:'MNT', minProfit:5, gasLimit:800000n,
-    rpcH:'https://rpc.mantle.xyz', rpcW:'wss://rpc.mantle.xyz',
+    rpcH:'https://rpc.mantle.xyz',
+    rpcW: null,   // HTTP 404 on WS upgrade. HTTP polling only.
     usdc:'0x09Bc4E0D864854c6aFB6eB9A9cdF58aC190D0dF9',
     weth:'0x78c1b0C915c4FAA5FffA6CAbf0219DA63d7f4cb8',
     router:UR2, quoter:UQ2, factory:UF3, flash:BALV, aave:null, mc3:MC3,
@@ -183,7 +190,8 @@ const CHAINS_CORE = {
   },
   cronos: {
     id:25, tier:2, native:'CRO', minProfit:5, gasLimit:800000n,
-    rpcH:'https://evm.cronos.org', rpcW:'wss://evm-ws.cronos.org',
+    rpcH:'https://evm.cronos.org',
+    rpcW: null,   // ENOTFOUND evm-ws.cronos.org — DNS does not exist. HTTP polling only.
     usdc:'0xc21223249CA28397B4B6541dfFaEcC539BfF0c59',
     weth:'0xe44Fd7fCb2b1581822D0c862B68222998a0c299a',
     router:'0x145677FC4d9b8F19B5D56d1820c48e0443049a30',
@@ -213,7 +221,8 @@ const CHAINS_CORE = {
   },
   metis: {
     id:1088, tier:2, native:'METIS', minProfit:5, gasLimit:800000n,
-    rpcH:'https://andromeda.metis.io/?owner=1088', rpcW:'wss://andromeda-ws.metis.io',
+    rpcH:'https://andromeda.metis.io/?owner=1088',
+    rpcW: null,   // ENOTFOUND andromeda-ws.metis.io — DNS does not exist. HTTP polling only.
     usdc:'0xEA32A96608495e54156Ae48931A7c20f0dcc1a21',
     weth:'0x75cb093E4D61d2A2e65D8e0BBb01DE8d89b53481',
     router:'0x1E876cCe41B7b844FDe09E38Fa1cf00f213bFf56',
@@ -239,7 +248,8 @@ const CHAINS_CORE = {
   },
   taiko: {
     id:167000, tier:2, native:'ETH', minProfit:5, gasLimit:800000n,
-    rpcH:'https://rpc.mainnet.taiko.xyz', rpcW:'wss://ws.mainnet.taiko.xyz',
+    rpcH:'https://rpc.mainnet.taiko.xyz',
+    rpcW: null,   // TLS ECONNRESET / consistent failure. HTTP polling only.
     usdc:'0x07d83526730c7438048D55A4fc033a18d5a9bcD9',
     weth:'0xA51894664A773981C6C112C43ce576f315d5b1B6',
     router:UR2, quoter:UQ2, factory:'0x75FC67473A91335B5b8F8821277262a13B38c9b3',
@@ -256,7 +266,8 @@ const CHAINS_CORE = {
   },
   klaytn: {
     id:8217, tier:3, native:'KLAY', minProfit:10, gasLimit:800000n,
-    rpcH:'https://public-en-cypress.klaytn.net', rpcW:'wss://public-en-cypress.klaytn.net/ws',
+    rpcH:'https://public-en.node.kaia.io',   // rebranded to Kaia — old cypress host is ENOTFOUND
+    rpcW: null,   // ENOTFOUND public-en-cypress.klaytn.net — DNS dead. HTTP polling only.
     usdc:'0x754288077D0fF82AF7a5317C7CB8c444D421d103',
     weth:'0x34d21b1e550D73cee41151c77F3c73359527a396',
     router:'0xEf71750C100f7918d6Ded239Ff1CF09E81dEA92', quoter:UQ2,
@@ -265,7 +276,8 @@ const CHAINS_CORE = {
   },
   okc: {
     id:66, tier:3, native:'OKT', minProfit:10, gasLimit:800000n,
-    rpcH:'https://exchainrpc.okex.org', rpcW:'wss://exchainws.okex.org:8443',
+    rpcH:'https://exchainrpc.okex.org',
+    rpcW: null,   // HTTP 403 on WS upgrade — auth required. HTTP polling only.
     usdc:'0xc946DAf81b08146B1C7A8Da2A851Ddf2B3EAaf85',
     weth:'0x8F8526dbfd6E38E3D8307702cA8469Bae6C56C15',
     router:'0xc97b81B8a38b9146010Df85f1Ac714aFE1Ad6a58', quoter:UQ2,
@@ -283,7 +295,8 @@ const CHAINS_CORE = {
   },
   canto: {
     id:7700, tier:3, native:'CANTO', minProfit:10, gasLimit:800000n,
-    rpcH:'https://canto.slingshot.finance', rpcW:'wss://canto.slingshot.finance/ws',
+    rpcH:'https://canto.slingshot.finance',
+    rpcW: null,   // consistent timeout on wss://canto.slingshot.finance/ws. HTTP polling only.
     usdc:'0x80b5a32E4F032B2a058b4D29B37aeFA4462B4c15',
     weth:'0x826551890Dc65655a0Aceca109aB11AbDbD7a07B',
     router:'0x78b3C724A2F663D11373C4a1978689271895256f', quoter:UQ2,
@@ -292,7 +305,8 @@ const CHAINS_CORE = {
   },
   evmos: {
     id:9001, tier:3, native:'EVMOS', minProfit:10, gasLimit:800000n,
-    rpcH:'https://evmos-evm.publicnode.com', rpcW:'wss://evmos-evm.publicnode.com',
+    rpcH:'https://evmos-evm.publicnode.com',
+    rpcW: null,   // HTTP 403 on WS upgrade — forbidden. HTTP polling only.
     usdc:'0x51e44FfaD5C2B122C8b635671FCC8139dc636E82',
     weth:'0x5842C5532b61aCF3227679a8b1BD0242a41752f2',
     router:'0xFCd2Ce20ef8ed3D43Ab4f8C2dA13bbF1C6d9512', quoter:UQ2,
@@ -300,7 +314,8 @@ const CHAINS_CORE = {
   },
   conflux: {
     id:1030, tier:3, native:'CFX', minProfit:10, gasLimit:800000n,
-    rpcH:'https://evm.confluxrpc.com', rpcW:'wss://evm.confluxrpc.com',
+    rpcH:'https://evm.confluxrpc.com',
+    rpcW: null,   // HTTP 200 on WS upgrade — not a WS endpoint. HTTP polling only.
     usdc:'0x6963EfED0aB40F6C3d7BdA44A05dcf1437C44372',
     weth:'0x14b2D3bC65e74DAE1030EAFd8ac30c533c976A9b',
     router:'0x7e5df0b1C59bEf55B74a8A6cC1f1aA770Cde61f6', quoter:UQ2,
@@ -309,7 +324,8 @@ const CHAINS_CORE = {
   },
   telos: {
     id:40, tier:3, native:'TLOS', minProfit:10, gasLimit:800000n,
-    rpcH:'https://mainnet.telos.net/evm', rpcW:'wss://mainnet.telos.net/evm',
+    rpcH:'https://mainnet.telos.net/evm',
+    rpcW: null,   // HTTP 404 on WS upgrade. HTTP polling only.
     usdc:'0x818ec0A7Fe18Ff94269904fCED6AE3DaE6d6dC0e',
     weth:'0xD102cE6A4dB07D247fcc28F366A623Df0938CA9E',
     router:'0x65a515E40E64a2B6Ddc9fDf4A2DccE5FEe37e9B', quoter:UQ2,
@@ -318,45 +334,50 @@ const CHAINS_CORE = {
   },
   rootstock: {
     id:30, tier:3, native:'RBTC', minProfit:10, gasLimit:800000n,
-    rpcH:'https://public-node.rsk.co', rpcW:'wss://public-node.rsk.co/websocket',
+    rpcH:'https://public-node.rsk.co',
+    rpcW: null,   // HTTP 501 Not Implemented on WS upgrade. HTTP polling only.
     usdc:'0x1bda44fda023f2af8280a16fd1b01d1a493ba6c4',
     weth:'0x542fDA317318eBF1d3DEAf76E0b632741A7e677d',
     router:'0x9B6c3d7e5f8A4B63d19B0c2B4f6e6D3A2C8b9E7', quoter:UQ2,
     factory:'0x5e4aB3b1CcEf34AB84e87C09b5F6A0e2a03Fc6C4',
     flash:BALV, aave:null, mc3:MC3,
   },
-  // 2025-2026 new chains
   berachain: {
     id:80084, tier:2, native:'BERA', minProfit:5, gasLimit:800000n,
-    rpcH:'https://bartio.rpc.berachain.com', rpcW:'wss://bartio.rpc.berachain.com',
+    rpcH:'https://bartio.rpc.berachain.com',
+    rpcW: null,   // HTTP 401 Unauthorized on WS upgrade — key required. HTTP polling only.
     usdc:'0x6969696969696969696969696969696969696969',
     weth:'0x7507c1dc16935B82698e4C63f2746A2fCf994dF8',
     router:UR2, quoter:UQ2, factory:UF3, flash:BALV, aave:null, mc3:MC3,
   },
   fraxtal: {
     id:252, tier:2, native:'frxETH', minProfit:5, gasLimit:800000n,
-    rpcH:'https://rpc.frax.com', rpcW:'wss://rpc.frax.com',
+    rpcH:'https://rpc.frax.com',
+    rpcW: null,   // HTTP 200 on WS upgrade — HTTP endpoint, not WS. HTTP polling only.
     usdc:'0xDcc0F2D8F90FDe85b10aC1c8Ab57dc0AE946A543',
     weth:'0xFC00000000000000000000000000000000000006',
     router:UR2, quoter:UQ2, factory:UF3, flash:BALV, aave:null, mc3:MC3,
   },
   worldchain: {
     id:480, tier:2, native:'ETH', minProfit:5, gasLimit:800000n,
-    rpcH:'https://worldchain-mainnet.g.alchemy.com/public', rpcW:'wss://worldchain-mainnet.g.alchemy.com/public',
+    rpcH:'https://worldchain-mainnet.g.alchemy.com/public',
+    rpcW:'wss://worldchain-mainnet.g.alchemy.com/public',
     usdc:'0x79A02482A880bCE3F13e09Da970dC34db4CD24d1',
     weth:'0x4200000000000000000000000000000000000006',
     router:UR2, quoter:UQ2, factory:UF3, flash:BALV, aave:null, mc3:MC3,
   },
   unichain: {
     id:1301, tier:2, native:'ETH', minProfit:5, gasLimit:800000n,
-    rpcH:'https://sepolia.unichain.org', rpcW:'wss://sepolia.unichain.org',
+    rpcH:'https://sepolia.unichain.org',
+    rpcW: null,   // HTTP 405 Method Not Allowed on WS upgrade. HTTP polling only.
     usdc:'0x31d0220469e10c4E71834a79b1f276d740d3768F',
     weth:'0x4200000000000000000000000000000000000006',
     router:UR2, quoter:UQ2, factory:UF3, flash:BALV, aave:null, mc3:MC3,
   },
   ink: {
     id:57073, tier:2, native:'ETH', minProfit:5, gasLimit:800000n,
-    rpcH:'https://rpc-gel-sepolia.inkonchain.com', rpcW:'wss://rpc-gel-sepolia.inkonchain.com',
+    rpcH:'https://rpc-gel-sepolia.inkonchain.com',
+    rpcW: null,   // HTTP 405 Method Not Allowed on WS upgrade. HTTP polling only.
     usdc:'0x0000000000000000000000000000000000000000',
     weth:'0x4200000000000000000000000000000000000006',
     router:UR2, quoter:UQ2, factory:UF3, flash:BALV, aave:null, mc3:MC3,
@@ -370,7 +391,6 @@ const CHAINS_CORE = {
   },
 }
 
-// DeFiLlama chain name map for auto-discovery
 const LLAMA_MAP = {
   'Ethereum':'ethereum','Arbitrum':'arbitrum','Base':'base','BSC':'bnb',
   'Polygon':'polygon','Optimism':'optimism','Avalanche':'avalanche',
@@ -390,15 +410,17 @@ export const addChain    = (name,cfg) => { _extra[name]=cfg; console.log('[CHAIN
 export const getMC3      = () => MC3
 
 export function initChains() {
-  const total=Object.keys(CHAINS_CORE).length
+  const total = Object.keys(CHAINS_CORE).length
   const t1=getTier(1).length, t2=getTier(2).length, t3=getTier(3).length
+  const deadWS = getActive().filter(c=>c.rpcW===null).length
+  const liveWS = getActive().filter(c=>c.rpcW!==null).length
   console.log(`[CHAINSAW] ${total} chains (${t1} tier1 · ${t2} tier2 · ${t3} tier3)`)
+  console.log(`[CHAINSAW] WS active: ${liveWS} chains · HTTP-only: ${deadWS} chains`)
   console.log('[CHAINSAW] Multicall3 universal:', MC3)
   console.log('[CHAINSAW] DeFiLlama auto-discovery: active (24hr cycle)')
   return getAllChains()
 }
 
-// Auto-discover new chains from DeFiLlama every 24hr
 export async function discoverChains() {
   try {
     const r = await fetch('https://api.llama.fi/v2/chains', { signal: AbortSignal.timeout(10000) })
@@ -409,14 +431,12 @@ export async function discoverChains() {
       if (!c.name || c.tvl < 10e6) continue
       const key = LLAMA_MAP[c.name]
       if (!key || CHAINS_CORE[key] || _extra[key]) continue
-      // Build minimal chain config for new chains
-      // Use drpc.org public endpoint pattern
       const slug = c.name.toLowerCase().replace(/\s+/g,'-')
       _extra[key] = {
         id: c.chainId || 0, tier: 3, native: c.nativeToken || 'ETH',
         minProfit: 10, gasLimit: 800000n,
         rpcH: `https://${slug}.drpc.org`,
-        rpcW: `wss://${slug}.drpc.org`,
+        rpcW: null,   // auto-discovered chains default to HTTP-only until WS verified
         usdc: '0x0000000000000000000000000000000000000000',
         weth: '0x0000000000000000000000000000000000000000',
         router: UR2, quoter: UQ2, factory: UF3,
@@ -427,4 +447,4 @@ export async function discoverChains() {
     }
     if (added) console.log(`[CHAINSAW] Auto-discovered ${added} new chains`)
   } catch {}
-  }
+    }
